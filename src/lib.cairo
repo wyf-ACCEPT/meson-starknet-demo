@@ -1,28 +1,23 @@
-fn main() -> felt252 {
-    fib(16)
-}
-
-fn fib(mut n: felt252) -> felt252 {
-    let mut a: felt252 = 0;
-    let mut b: felt252 = 1;
-    loop {
-        if n == 0 {
-            break a;
-        }
-        n = n - 1;
-        let temp = b;
-        b = a + b;
-        a = temp;
+#[starknet::contract]
+mod hello {
+    #[storage]
+    struct Storage {
+        name: felt252,
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::fib;
+    #[constructor]
+    fn constructor(ref self: ContractState, name: felt252) {
+        self.name.write(name);
+    }
 
-    #[test]
-    #[available_gas(100000)]
-    fn it_works() {
-        assert(fib(16) == 987, 'it works!');
+    #[external(v0)]
+    fn get_name(self: @ContractState) -> felt252 {
+        self.name.read()
+    }
+    
+    #[external(v0)]
+    fn set_name(ref self: ContractState, name: felt252) {
+        let previous = self.name.read();
+        self.name.write(name);
     }
 }
