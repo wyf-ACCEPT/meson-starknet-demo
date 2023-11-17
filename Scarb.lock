@@ -2,5 +2,42 @@
 version = 1
 
 [[package]]
+name = "alexandria_bytes"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria#d32162a1bbf5b7c8220d7858ebec7837c50ffbb3"
+dependencies = [
+ "alexandria_data_structures",
+ "alexandria_math",
+]
+
+[[package]]
+name = "alexandria_data_structures"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria#d32162a1bbf5b7c8220d7858ebec7837c50ffbb3"
+dependencies = [
+ "alexandria_encoding",
+]
+
+[[package]]
+name = "alexandria_encoding"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria#d32162a1bbf5b7c8220d7858ebec7837c50ffbb3"
+dependencies = [
+ "alexandria_math",
+]
+
+[[package]]
+name = "alexandria_math"
+version = "0.2.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria#d32162a1bbf5b7c8220d7858ebec7837c50ffbb3"
+dependencies = [
+ "alexandria_data_structures",
+]
+
+[[package]]
 name = "meson_starknet_demo"
 version = "0.1.0"
+dependencies = [
+ "alexandria_bytes",
+ "alexandria_math",
+]
