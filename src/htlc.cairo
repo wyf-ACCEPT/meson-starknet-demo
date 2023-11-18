@@ -1,63 +1,73 @@
-// use starknet::ContractAddress;
-// // use starknet::eth_address::EthAddress;
+use starknet::ContractAddress;
+// use starknet::eth_address::EthAddress;
 
-// #[starknet::interface]
-// trait HashTimeLockTrait<TContractState> {
-//     // fn lock_asset();
-// }
+#[starknet::interface]
+trait HashTimeLockTrait<TContractState> {
+    fn lock_asset(
+        ref self: TContractState, 
+        hashlock: u256, 
+        timelimit: u64, 
+        amount: u256, 
+        receiver: ContractAddress
+    );
 
-// #[starknet::interface]
-// trait CryptoTrait<TContractState> {
-//     fn keccak256(self: @TContractState, encodedswap: u256) -> u256;
-//     fn keccak256_try(self: @TContractState) -> u256;
-//     fn keccak256_try2(self: @TContractState) -> u256;
-//     fn to_eth_address(self: @TContractState, eth_address: felt252) -> (EthAddress, EthAddress);
-// }
+    fn claim_asset(
+        ref self: TContractState, 
+        secret: u256
+    );
 
+    fn view_current_locked_assets(
+        self: @TContractState,
+        hashlock: u256
+    ) -> (u256, u64);
+}
 
-// #[starknet::contract]
-// mod crypto {
-//     use core::traits::TryInto;
-// use core::array::ArrayTrait;
+#[starknet::contract]
+mod HashTimeLock {
+    use super::{ContractAddress, HashTimeLockTrait};
+    use starknet::{get_caller_address, get_contract_address, get_block_timestamp};
+    use openzeppelin::token::erc20::interface::{
+        IERC20Dispatcher, IERC20DispatcherTrait,
+    };
 
-//     use super::{CryptoTrait, EthAddress};
-//     use starknet::eth_address::{Felt252TryIntoEthAddress, EthAddressZeroable};
-//     use alexandria_math::keccak256;
-//     use alexandria_bytes::{Bytes, BytesTrait};
+    #[storage]
+    struct Storage {
+        token: ContractAddress,
+        locked_assets: LegacyMap<u256, (u256, u64)>,
+    }
 
-//     #[storage]
-//     struct Storage {
-//     }
+    #[constructor]
+    fn constructor(ref self: ContractState, token: ContractAddress) {
+        self.token.write(token);
+    }
 
-//     #[constructor]
-//     fn constructor(ref self: ContractState) {
-//     }
+    #[external(v0)]
+    impl HashTimeLockImpl of HashTimeLockTrait<ContractState>{
+        fn lock_asset(
+            ref self: ContractState, 
+            hashlock: u256, 
+            timelimit: u64, 
+            amount: u256, 
+            receiver: ContractAddress
+        ) {
+            // IERC20Dispatcher { contract_address: self.token.read() }.transfer_from(
+            //     get_caller_address(), get_contract_address(), amount
+            // );
+            let expire_time = get_block_timestamp() + timelimit;
+            self.locked_assets.write(hashlock, (amount, expire_time));
+        }
 
-//     #[external(v0)]
-//     impl CryptoImpl of CryptoTrait<ContractState>{
-//         //  starkli call <contract_address> keccak256 <u256_low> <u256_high> 
-//         fn keccak256(self: @ContractState, encodedswap: u256) -> u256 {
-//             let mut bytes: Bytes = BytesTrait::new(0, array![]);
-//             bytes.append_u256(encodedswap);
-//             bytes.keccak()
-//         }
+        fn claim_asset(
+            ref self: ContractState, 
+            secret: u256
+        ) {
+        }
 
-//         fn keccak256_try(self: @ContractState) -> u256 {
-//             let mut keccak_input = array![0_u8, 0, 9];
-//             keccak256::keccak256(keccak_input.span())
-//         }
-
-//         fn keccak256_try2(self: @ContractState) -> u256 {
-//             let mut bytes: Bytes = BytesTrait::new(0, array![]);
-//             bytes.append_u256(5);
-//             bytes.keccak()
-//         }
-
-//         fn to_eth_address(self: @ContractState, eth_address: felt252) -> (EthAddress, EthAddress) {
-//             (
-//                 eth_address.try_into().unwrap(),
-//                 EthAddressZeroable::zero()
-//             )
-//         }
-//     }
-// }
+        fn view_current_locked_assets(
+            self: @ContractState,
+            hashlock: u256
+        ) -> (u256, u64) {
+            self.locked_assets.read(hashlock)
+        }
+    }
+}
