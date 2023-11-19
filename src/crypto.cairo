@@ -13,7 +13,7 @@ trait CryptoTrait<TContractState> {
 #[starknet::contract]
 mod crypto {
     use core::traits::TryInto;
-use core::array::ArrayTrait;
+    use core::array::ArrayTrait;
 
     use super::{CryptoTrait, EthAddress};
     use starknet::eth_address::{Felt252TryIntoEthAddress, EthAddressZeroable};
