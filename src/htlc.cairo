@@ -61,6 +61,9 @@ mod HashTimeLock {
             amount: u256, 
             receiver: ContractAddress
         ) {
+            let (_, possible_expire_time, _) = self.locked_assets.read(hashlock);
+            assert(possible_expire_time == 0, 'Already locked with this hash!');
+
             let expire_time = get_block_timestamp() + timelimit;
             self.locked_assets.write(hashlock, (amount, expire_time, receiver));
             IERC20Dispatcher { contract_address: self.token.read() }.transfer_from(
