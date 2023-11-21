@@ -6,7 +6,7 @@ Welcome to [Meson](https://meson.fi/), the faster and safer way to execute low-c
 
 Meson has been launched on 16 high-performance chains, including Ethereum, BNB Chain, Tron, Avalanche, Polygon, Arbitrum, Optimism, and more. Our Solidity code is publicly available on GitHub at [meson-contracts-solidity](https://github.com/MesonFi/meson-contracts-solidity) and is ready to support new EVM chains.
 
-Furthermore, we have started supporting new Non-EVM chains and developing corresponding contracts, such as [meson-contracts-aptos](https://github.com/MesonFi/meson-contracts-aptos) and [meson-contracts-solana-rust](https://github.com/MesonFi/meson-contracts-solana-rust). Currently, we are developing a Cairo contract for Starknet, and this project is a simple transaction demo. Our technical product is based on the **HTLC (Hashed Timelock Contract)** prototype, and this HTLC Demo is our first implementation. For more technical details, please visit our [documentation]((https://docs.meson.fi/)).
+Additionally, we're expanding our support to Non-EVM chains and actively developing corresponding contracts, such as [meson-contracts-aptos](https://github.com/MesonFi/meson-contracts-aptos) and [meson-contracts-solana-rust](https://github.com/MesonFi/meson-contracts-solana-rust). Currently, we are developing a Cairo contract for Starknet, and this project is a simple transaction demo. Our technical product is based on the **HTLC (Hashed Timelock Contract)** prototype, and this HTLC Demo is our first implementation. For more technical details, please visit our [documentation](https://docs.meson.fi/).
 
 <br>
 
@@ -16,7 +16,12 @@ Furthermore, we have started supporting new Non-EVM chains and developing corres
 
 First, install `katana`, `scarb`, and `starkli`. See this link for guidance: [StarkNet Tooling](https://book.starknet.io/ch02-02-starkli-scarb-katana.html).
 
-Next, set up your `.env` file. In our example, we use a local node (you can easily start a local network with `katana`).
+Then, configure your `.env` file. Our example utilizes a local node (you can easily start a local network with `katana`), like this:
+
+```dotenv
+STARKNET_ACCOUNT=katana-0
+STARKNET_RPC=http://0.0.0.0:5050
+```
 
 Then, initialize the variables by running the following commands. Replace the variable values if you're not using a local node. Otherwise, we suggest using these as-is.
 
@@ -40,7 +45,7 @@ katana
 
 ### Deploy the contracts
 
-Compile the Token contract, then declare and deploy it.
+Begin by compiling the Token contract, followed by its declaration and deployment.
 
 ```bash
 scarb build
@@ -88,7 +93,7 @@ After deploying these contracts, you can start interacting with them.
 
 ### Transfer and Approve Tokens
 
-We pre-minted 1 billion tokens for the Token contract's deployer, Admin. Now, transfer some tokens to Carol and David and then approve a certain transfer amount from HTLC's Sender (Carol) to the HTLC contract.
+Initially, we pre-minted 1 billion tokens for the token contract's deployer (`admin`). Next, proceed to transfer tokens to Carol and David and then approve a certain transfer amount from HTLC's Sender (Carol) to the HTLC contract.
 
 ```bash
 starkli call $mytoken symbol
@@ -122,19 +127,19 @@ starkli call $mytoken balance_of $david
 
 ### Interact with HTLC
 
-Finally, we begin the user journey of HTLC.
+Next, we embark on the user journey within the HTLC framework.
 
-Suppose Carol sets a `secret` known only to herself:
+Imagine Carol sets a `secret`, known exclusively to her:
 
 `0100000c3500c0f000000000d19b03ec0000000a8c00655757b0e708ff0266ff`
 
-And calculates its `keccak256` hash:
+And calculates its **keccak256** hash:
 
 `c5ab957f679c2bb7b779af1990a319318fcb3db479af295da5625a797d90d908`
 
 Carol then locks some $MUSD in the contract with the hash, the transfer amount, and the receiver, David, claiming that "David can only withdraw this money before my set expiration time if he provides the original value (my `secret`) of this hash."
 
-Simulate Carol's operation:
+To simulate Carol's operation:
 
 ```bash
 export time_limit=300
@@ -147,7 +152,7 @@ starkli invoke $htlc --account $carol_account lock_asset 0x8fcb3db479af295da5625
 # Notice that we should separately input the "low part" and the "high part" of the hash value
 ```
 
-Then anyone can view the current locked asset information using this hash:
+Subsequently, anyone can access the current locked asset information by using this hash:
 
 ```bash
 starkli call $htlc view_current_locked_assets 0x8fcb3db479af295da5625a797d90d908 0xc5ab957f679c2bb7b779af1990a31931
@@ -160,13 +165,13 @@ starkli call $htlc view_current_locked_assets 0x8fcb3db479af295da5625a797d90d908
 # ]
 ```
 
-In the real world, Carol tells David her Secret, and David uses it to withdraw the assets.
+In a practical scenario, Carol would disclose her Secret to David, enabling him to withdraw the assets:
 
 ```bash
 starkli invoke $htlc --account $david_account claim_asset 0x0000000a8c00655757b0e708ff0266ff 0x0100000c3500c0f000000000d19b03ec
 ```
 
-Compare Carol and David's asset balances before and after to see the changes.
+Compare Carol and David's asset balances before and after to see the changes:
 
 ```bash
 starkli call $mytoken balance_of $carol
