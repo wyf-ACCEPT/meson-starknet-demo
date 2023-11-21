@@ -24,7 +24,7 @@ trait HashTimeLockTrait<TContractState> {
     fn view_left_time(
         self: @TContractState,
         hashlock: u256
-    ) -> u64;
+    ) -> (bool, u64);
 }
 
 #[starknet::contract]
@@ -102,9 +102,17 @@ mod HashTimeLock {
         fn view_left_time(
             self: @ContractState,
             hashlock: u256
-        ) -> u64 {
+        ) -> (bool, u64) {
             let (_, expire_time, _) = self.locked_assets.read(hashlock);
-            expire_time - get_block_timestamp()
+            let is_expire = expire_time < get_block_timestamp();
+            let left_time = {
+                if is_expire {
+                    get_block_timestamp() - expire_time
+                } else {
+                    expire_time - get_block_timestamp()
+                }
+            };
+            (is_expire, left_time)
         }
     }
 }
