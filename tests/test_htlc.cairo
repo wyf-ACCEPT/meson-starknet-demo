@@ -45,4 +45,7 @@ fn test_journey() {
     // assert(balance == 0, 'balance == 0');
     let balance_felt: felt252 = balance.try_into().unwrap();
     balance_felt.print();
+
+    let r: u64 = 0xffffffffffffffff_u256.try_into().unwrap();
+    r.print();
 }

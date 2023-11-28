@@ -1,4 +1,5 @@
-target
-.env
 account
 node_modules
+target
+.env
+.snfoundry_cache
