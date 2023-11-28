@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 // use starknet::eth_address::EthAddress;
 
 #[starknet::interface]
-trait HashTimeLockTrait<TContractState> {
+trait IHashTimeLock<TContractState> {
     fn lock_asset(
         ref self: TContractState, 
         hashlock: u256, 
@@ -29,7 +29,7 @@ trait HashTimeLockTrait<TContractState> {
 
 #[starknet::contract]
 mod HashTimeLock {
-    use super::{ContractAddress, HashTimeLockTrait};
+    use super::{ContractAddress, IHashTimeLock};
     use starknet::{
         get_caller_address, get_contract_address, 
         get_block_timestamp, contract_address::ContractAddressZeroable
@@ -53,7 +53,7 @@ mod HashTimeLock {
     }
 
     #[external(v0)]
-    impl HashTimeLockImpl of HashTimeLockTrait<ContractState>{
+    impl HashTimeLockImpl of IHashTimeLock<ContractState>{
         fn lock_asset(
             ref self: ContractState, 
             hashlock: u256, 

@@ -41,9 +41,15 @@ dependencies = [
  "alexandria_bytes",
  "alexandria_math",
  "openzeppelin",
+ "snforge_std",
 ]
 
 [[package]]
 name = "openzeppelin"
 version = "0.8.0-beta.0"
 source = "git+https://github.com/openzeppelin/cairo-contracts#f3e2a5f0547a429c716f32471b06df729cbdfb9f"
+
+[[package]]
+name = "snforge_std"
+version = "0.1.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry#24c9453e0fc296c37e2c16f1db50554bd6baa41f"
