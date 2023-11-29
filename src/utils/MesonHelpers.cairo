@@ -1,6 +1,5 @@
-use starknet::ContractAddress;
+use starknet::{ContractAddress, EthAddress};
 use super::MesonConstants;
-use super::MesonErrors::MesonErrors;
 
 // Note that there's no `<<` or `>>` operator in cairo.
 const POW_2_248: u256 = 0x100000000000000000000000000000000000000000000000000000000000000;
@@ -13,16 +12,22 @@ const POW_2_48 : u256 = 0x1000000000000;
 const POW_2_40 : u256 = 0x10000000000;
 const POW_2_32 : u256 = 0x100000000;
 const POW_2_24 : u256 = 0x1000000;
+const POW_2_16 : u256 = 0x10000;
 const POW_2_8  : u256 = 0x100;
 
-const U64_MAX: u256 = 0xffffffffffffffff;
-const U40_MAX: u256 = 0xffffffffff;
-const U32_MAX: u256 = 0xffffffff;
-const U20_MAX: u256 = 0xfffff;
-const U16_MAX: u256 = 0xffff;
-const U12_MAX: u256 = 0xfff;
-const U8_MAX : u256 = 0xff;
+const U160_MAX : u256 = 0xffffffffffffffffffffffffffffffffffffffff;
+const U80_MAX  : u256 = 0xffffffffffffffffffff;
+const U64_MAX  : u256 = 0xffffffffffffffff;
+const U40_MAX  : u256 = 0xffffffffff;
+const U32_MAX  : u256 = 0xffffffff;
+const U20_MAX  : u256 = 0xfffff;
+const U16_MAX  : u256 = 0xffff;
+const U12_MAX  : u256 = 0xfff;
+const U8_MAX   : u256 = 0xff;
 
+enum MesonErrors {
+    TokenIndexNotAllowed,
+}
 
 fn getShortCoinType() -> u16 {
     MesonConstants::SHORT_COIN_TYPE
@@ -59,8 +64,9 @@ fn _feeForLp(encodedSwap: u256) -> u256 {
     (encodedSwap / POW_2_88) & U40_MAX
 }
 
-// Unused function: 
-//   function _saltFrom(uint256 encodedSwap) internal pure returns (uint80）
+fn _saltFrom(encodedSwap: u256) -> u128 {    // Original uint256 -> uint80
+    ((encodedSwap / POW_2_128) & U80_MAX).try_into().unwrap()
+}
 
 fn _saltDataFrom(encodedSwap: u256) -> u64 {
     ((encodedSwap / POW_2_128) & U64_MAX).try_into().unwrap()
@@ -127,52 +133,46 @@ fn _outTokenIndexFrom(encodedSwap: u256) -> u8 {
 
 fn _tokenType(tokenIndex: u8) -> Result<u8, MesonErrors> {
     if tokenIndex >= 192 {
-        // Non stablecoins
-        Result::Ok(tokenIndex / 4)
+        Result::Ok(tokenIndex / 4)  // Non stablecoins
     } else if tokenIndex < 65 {
-        // Stablecoins
-        Result::Ok(0_u8)
+        Result::Ok(0_u8)    // Stablecoins
     } else {
         Result::Err(MesonErrors::TokenIndexNotAllowed)
     }
 }
 
-// TODO
-// fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u48 {
-//     ((encodedSwap & 0xFF000000) << 16) | poolIndex
-// }
-//   function _poolTokenIndexForOutToken(uint256 encodedSwap, uint40 poolIndex) internal pure returns (uint48) {
-//     return uint48((encodedSwap & 0xFF000000) << 16) | poolIndex;
-//   }
+fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u64 {   // original (uint256, uint40) -> uint48
+    ((encodedSwap & 0xFF000000) * POW_2_16).try_into().unwrap() | poolIndex
+}
 
-//   function _initiatorFromPosted(uint200 postedSwap) internal pure returns (address) {
-//     return address(uint160(postedSwap >> 40));
-//   }
+fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
+    (postedSwap / POW_2_40).into()
+}
 
-//   function _poolIndexFromPosted(uint200 postedSwap) internal pure returns (uint40) {
-//     return uint40(postedSwap);
-//   }
-  
-//   function _lockedSwapFrom(uint256 until, uint40 poolIndex) internal pure returns (uint80) {
-//     return (uint80(until) << 40) | poolIndex;
-//   }
+fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
+    (postedSwap & U40_MAX).try_into().unwrap()
+}
 
-//   function _poolIndexFromLocked(uint80 lockedSwap) internal pure returns (uint40) {
-//     return uint40(lockedSwap);
-//   }
+fn _lockedSwapFrom(until: u256, poolIndex: u64) -> u128 {   // original (uint256, uint40) -> uint80
+    ((until * POW_2_40).try_into().unwrap() | poolIndex).into()
+}
 
-//   function _untilFromLocked(uint80 lockedSwap) internal pure returns (uint256) {
-//     return uint256(lockedSwap >> 40);
-//   }
+fn _poolIndexFromLocked(lockedSwap: u128) -> u64 {  // original (uint80) -> uint40
+    (lockedSwap.into() & U40_MAX).try_into().unwrap()
+}
 
-//   function _poolTokenIndexFrom(uint8 tokenIndex, uint40 poolIndex) internal pure returns (uint48) {
-//     return (uint48(tokenIndex) << 40) | poolIndex;
-//   }
+fn _untilFromLocked(lockedSwap: u128) -> u256 {  // original (uint80) -> uint256
+    (lockedSwap.into() / POW_2_40).into()
+}
 
-//   function _tokenIndexFrom(uint48 poolTokenIndex) internal pure returns (uint8) {
-//     return uint8(poolTokenIndex >> 40);
-//   }
+fn _poolTokenIndexFrom(tokenIndex: u8, poolIndex: u64) -> u64 {     // original (uint8, uint40) -> uint48
+    (tokenIndex.into() * POW_2_40).try_into().unwrap() | poolIndex
+}
 
-//   function _poolIndexFrom(uint48 poolTokenIndex) internal pure returns (uint40) {
-//     return uint40(poolTokenIndex);
-//   }
+fn _tokenIndexFrom(poolTokenIndex: u64) -> u8 {     // original (uint48) -> uint8
+    (poolTokenIndex.into() / POW_2_40).try_into().unwrap()
+}
+
+fn _poolIndexFrom(poolTokenIndex: u64) -> u64 {     // original (uint48) -> uint40
+    (poolTokenIndex.into() & U40_MAX).try_into().unwrap()
+}
