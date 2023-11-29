@@ -25,16 +25,3 @@ const TRON_SIGN_HEADER_53: felt252 = '\x19TRON Signed Message:\n53\n';
 // const REQUEST_TYPE_HASH: felt252 = keccak256('bytes32 Sign to request a swap on Meson (Testnet)');
 // const RELEASE_TYPE_HASH: felt252 = keccak256('bytes32 Sign to release a swap on Meson (Testnet)address Recipient');
 // const RELEASE_TO_TRON_TYPE_HASH: felt252 = keccak256('bytes32 Sign to release a swap on Meson (Testnet)address Recipient (tron address in hex format)');
-
-// Note that there's no `<<` or `>>` operator in cairo.
-const POW_2_248: u256 = 0x100000000000000000000000000000000000000000000000000000000000000;
-const POW_2_208: u256 = 0x10000000000000000000000000000000000000000000000000000;
-const POW_2_172: u256 = 0x10000000000000000000000000000000000000000000;
-const POW_2_160: u256 = 0x10000000000000000000000000000000000000000;
-const POW_2_128: u256 = 0x100000000000000000000000000000000;
-const POW_2_88 : u256 = 0x10000000000000000000000;
-const POW_2_48 : u256 = 0x1000000000000;
-const POW_2_40 : u256 = 0x10000000000;
-const POW_2_32 : u256 = 0x100000000;
-const POW_2_24 : u256 = 0x1000000;
-const POW_2_8  : u256 = 0x100;
