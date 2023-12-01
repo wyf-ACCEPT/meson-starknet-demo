@@ -1,12 +1,18 @@
+use core::option::OptionTrait;
 use starknet::{ContractAddress, EthAddress};
 use super::MesonConstants;
+use alexandria_bytes::{Bytes, BytesTrait};
+use starknet::verify_eth_signature;
+use starknet::secp256_trait::signature_from_vrs;
 
 // Note that there's no `<<` or `>>` operator in cairo.
+const POW_2_255: u256 = 0x8000000000000000000000000000000000000000000000000000000000000000;
 const POW_2_248: u256 = 0x100000000000000000000000000000000000000000000000000000000000000;
 const POW_2_208: u256 = 0x10000000000000000000000000000000000000000000000000000;
 const POW_2_172: u256 = 0x10000000000000000000000000000000000000000000;
 const POW_2_160: u256 = 0x10000000000000000000000000000000000000000;
 const POW_2_128: u256 = 0x100000000000000000000000000000000;
+const POW_2_96 : u256 = 0x1000000000000000000000000;
 const POW_2_88 : u256 = 0x10000000000000000000000;
 const POW_2_48 : u256 = 0x1000000000000;
 const POW_2_40 : u256 = 0x10000000000;
@@ -27,16 +33,26 @@ const U8_MAX   : u256 = 0xff;
 
 enum MesonErrors {
     TokenIndexNotAllowed,
+    SignerCannotBeZero,
+    InvalidSignature,
 }
 
 fn getShortCoinType() -> u16 {
     MesonConstants::SHORT_COIN_TYPE
 }
 
-//  TODO:
-//   function _getSwapId(uint256 encodedSwap, address initiator) internal pure returns (bytes32) {
-//     return keccak256(abi.encodePacked(encodedSwap, initiator));
-//   }
+// TODO: Test this!
+fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
+    let mut bytes = BytesTrait::new_empty();
+    bytes.append_u256(encodedSwap);
+    let initiator_u256: u256 = initiator.address.into();
+    let initiator_high_shifted = (
+        (initiator_u256.high.into() % POW_2_32) * POW_2_96
+    ).try_into().unwrap();
+    bytes.append_u128_packed(initiator_high_shifted, 4);
+    bytes.append_u128(initiator_u256.low);
+    bytes.keccak()
+}
 
 fn _versionFrom(encodedSwap: u256) -> u8 {
     (encodedSwap / POW_2_248).try_into().unwrap()
@@ -175,4 +191,79 @@ fn _tokenIndexFrom(poolTokenIndex: u64) -> u8 {     // original (uint48) -> uint
 
 fn _poolIndexFrom(poolTokenIndex: u64) -> u64 {     // original (uint48) -> uint40
     (poolTokenIndex.into() & U40_MAX).try_into().unwrap()
+}
+
+//   function _checkRequestSignature(
+//     uint256 encodedSwap,
+//     bytes32 r,
+//     bytes32 yParityAndS,
+//     address signer
+//   ) internal pure {
+//     require(signer != address(0), "Signer cannot be empty address");
+//     bytes32 s = yParityAndS & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+//     uint8 v = uint8((uint256(yParityAndS) >> 255) + 27);
+//     require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature");
+
+//     bool nonTyped = _signNonTyped(encodedSwap);
+//     bytes32 digest;
+//     if (_inChainFrom(encodedSwap) == 0x00c3) {
+//       digest = keccak256(abi.encodePacked(nonTyped ? TRON_SIGN_HEADER_33 : TRON_SIGN_HEADER, encodedSwap));
+//     } else if (nonTyped) {
+//       digest = keccak256(abi.encodePacked(ETH_SIGN_HEADER, encodedSwap));
+//     } else {
+//       bytes32 typehash = REQUEST_TYPE_HASH;
+//       assembly {
+//         mstore(0, encodedSwap)
+//         mstore(32, keccak256(0, 32))
+//         mstore(0, typehash)
+//         digest := keccak256(0, 64)
+//       }
+//     }
+//     require(signer == ecrecover(digest, v, r, s), "Invalid signature");
+//   }
+
+//   function _checkReleaseSignature(
+//     uint256 encodedSwap,
+//     address recipient,
+//     bytes32 r,
+//     bytes32 yParityAndS,
+//     address signer
+//   ) internal pure {
+//     require(signer != address(0), "Signer cannot be empty address");
+//     bytes32 s = yParityAndS & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+//     uint8 v = uint8((uint256(yParityAndS) >> 255) + 27);
+//     require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature");
+
+//     bool nonTyped = _signNonTyped(encodedSwap);
+//     bytes32 digest;
+//     if (_inChainFrom(encodedSwap) == 0x00c3) {
+//       digest = keccak256(abi.encodePacked(nonTyped ? TRON_SIGN_HEADER_53 : TRON_SIGN_HEADER, encodedSwap, recipient));
+//     } else if (nonTyped) {
+//       digest = keccak256(abi.encodePacked(ETH_SIGN_HEADER_52, encodedSwap, recipient));
+//     } else {
+//       bytes32 typehash = _outChainFrom(encodedSwap) == 0x00c3 ? RELEASE_TO_TRON_TYPE_HASH : RELEASE_TYPE_HASH;
+//       assembly {
+//         mstore(20, recipient)
+//         mstore(0, encodedSwap)
+//         mstore(32, keccak256(0, 52))
+//         mstore(0, typehash)
+//         digest := keccak256(0, 64)
+//       }
+//     }
+//     require(signer == ecrecover(digest, v, r, s), "Invalid signature");
+//   }
+
+
+fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress) {
+    let s = yParityAndS & 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let v: u32 = (yParityAndS / POW_2_255).try_into().unwrap() + 27;
+
+    assert(signer.address != 0, 'Signer cannot be zero!');
+    assert(
+        s <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
+        'Invalid signature!'    
+    );
+
+    let signature = signature_from_vrs(v, r, s);
+    verify_eth_signature(digest, signature, signer);
 }

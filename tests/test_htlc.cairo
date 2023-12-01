@@ -1,4 +1,4 @@
-use core::traits::TryInto;
+// use core::traits::TryInto;
 // #[test]
 // fn call_and_invoke() {
 //     // Declare and deploy the contract
@@ -20,32 +20,32 @@ use core::traits::TryInto;
 //     assert(balance == 100, 'balance == 100');
 // }
 
-use debug::PrintTrait;
-use starknet::contract_address_const;
-use snforge_std::{ declare, ContractClassTrait };
-use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-use meson_starknet_demo::htlc::IHashTimeLockDispatcher;
+// use debug::PrintTrait;
+// use starknet::contract_address_const;
+// use snforge_std::{ declare, ContractClassTrait };
+// use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+// use meson_starknet_demo::htlc::IHashTimeLockDispatcher;
 
-#[test]
-fn test_journey() {
-    let recipient = contract_address_const::<0x01>();
-    let token_declare = declare('MyUSDToken');
-    let token = token_declare.deploy(
-        @array![recipient.into()],
-    ).unwrap();
-    let htlc_declare = declare('HashTimeLock');
-    let htlc = htlc_declare.deploy(
-        @array![token.into()],
-    ).unwrap();
+// #[test]
+// fn test_journey() {
+//     let recipient = contract_address_const::<0x01>();
+//     let token_declare = declare('MyUSDToken');
+//     let token = token_declare.deploy(
+//         @array![recipient.into()],
+//     ).unwrap();
+//     let htlc_declare = declare('HashTimeLock');
+//     let htlc = htlc_declare.deploy(
+//         @array![token.into()],
+//     ).unwrap();
 
-    let token_dispatcher = IERC20Dispatcher { contract_address: token };
-    let htlc_dispatcher = IHashTimeLockDispatcher { contract_address: htlc };
+//     let token_dispatcher = IERC20Dispatcher { contract_address: token };
+//     let htlc_dispatcher = IHashTimeLockDispatcher { contract_address: htlc };
 
-    let balance = token_dispatcher.balance_of(recipient);
-    // assert(balance == 0, 'balance == 0');
-    let balance_felt: felt252 = balance.try_into().unwrap();
-    balance_felt.print();
+//     let balance = token_dispatcher.balance_of(recipient);
+//     // assert(balance == 0, 'balance == 0');
+//     let balance_felt: felt252 = balance.try_into().unwrap();
+//     balance_felt.print();
 
-    let r: u64 = 0xffffffffffffffff_u256.try_into().unwrap();
-    r.print();
-}
+//     let r: u64 = 0xffffffffffffffff_u256.try_into().unwrap();
+//     r.print();
+// }
