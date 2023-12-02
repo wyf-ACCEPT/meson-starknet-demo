@@ -1,3 +1,4 @@
+use core::traits::TryInto;
 use core::option::OptionTrait;
 use starknet::{ContractAddress, EthAddress};
 use super::MesonConstants;
@@ -41,15 +42,13 @@ fn getShortCoinType() -> u16 {
     MesonConstants::SHORT_COIN_TYPE
 }
 
+use debug::PrintTrait;
 // TODO: Test this!
 fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
     let mut bytes = BytesTrait::new_empty();
     bytes.append_u256(encodedSwap);
     let initiator_u256: u256 = initiator.address.into();
-    let initiator_high_shifted = (
-        (initiator_u256.high.into() % POW_2_32) * POW_2_96
-    ).try_into().unwrap();
-    bytes.append_u128_packed(initiator_high_shifted, 4);
+    bytes.append_u128_packed(initiator_u256.high, 4);
     bytes.append_u128(initiator_u256.low);
     bytes.keccak()
 }
@@ -193,66 +192,88 @@ fn _poolIndexFrom(poolTokenIndex: u64) -> u64 {     // original (uint48) -> uint
     (poolTokenIndex.into() & U40_MAX).try_into().unwrap()
 }
 
-//   function _checkRequestSignature(
-//     uint256 encodedSwap,
-//     bytes32 r,
-//     bytes32 yParityAndS,
-//     address signer
-//   ) internal pure {
-//     require(signer != address(0), "Signer cannot be empty address");
-//     bytes32 s = yParityAndS & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
-//     uint8 v = uint8((uint256(yParityAndS) >> 255) + 27);
-//     require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature");
+fn _checkRequestSignature(
+    encodedSwap: u256,
+    r: u256,
+    yParityAndS: u256,
+    signer: EthAddress,
+) {
+    let nonTyped = _signNonTyped(encodedSwap);
 
-//     bool nonTyped = _signNonTyped(encodedSwap);
-//     bytes32 digest;
-//     if (_inChainFrom(encodedSwap) == 0x00c3) {
-//       digest = keccak256(abi.encodePacked(nonTyped ? TRON_SIGN_HEADER_33 : TRON_SIGN_HEADER, encodedSwap));
-//     } else if (nonTyped) {
-//       digest = keccak256(abi.encodePacked(ETH_SIGN_HEADER, encodedSwap));
-//     } else {
-//       bytes32 typehash = REQUEST_TYPE_HASH;
-//       assembly {
-//         mstore(0, encodedSwap)
-//         mstore(32, keccak256(0, 32))
-//         mstore(0, typehash)
-//         digest := keccak256(0, 64)
-//       }
-//     }
-//     require(signer == ecrecover(digest, v, r, s), "Invalid signature");
-//   }
+    let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
+        let mut bytes = MesonConstants::getTronSignHeaderBytes(
+            is32: if nonTyped { false } else { true }, is33: true,
+        );
+        bytes.append_u256(encodedSwap);
+        bytes
+    } else if nonTyped {
+        let mut bytes = MesonConstants::getEthSignHeaderBytes(is32: true);
+        bytes.append_u256(encodedSwap);
+        bytes
+    } else {
+        let mut msgHashBytes = BytesTrait::new_empty();
+        msgHashBytes.append_u256(encodedSwap);
+        let msgHash = msgHashBytes.keccak();
+        let bytes = BytesTrait::new(64, array![
+            MesonConstants::REQUEST_TYPE_HASH.high,
+            MesonConstants::REQUEST_TYPE_HASH.low,
+            msgHash.high, 
+            msgHash.low,
+        ]);
+        bytes
+    };
 
-//   function _checkReleaseSignature(
-//     uint256 encodedSwap,
-//     address recipient,
-//     bytes32 r,
-//     bytes32 yParityAndS,
-//     address signer
-//   ) internal pure {
-//     require(signer != address(0), "Signer cannot be empty address");
-//     bytes32 s = yParityAndS & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
-//     uint8 v = uint8((uint256(yParityAndS) >> 255) + 27);
-//     require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature");
+    let digest = signingData.keccak();
+    _checkSignature(digest, r, yParityAndS, signer);
+}
 
-//     bool nonTyped = _signNonTyped(encodedSwap);
-//     bytes32 digest;
-//     if (_inChainFrom(encodedSwap) == 0x00c3) {
-//       digest = keccak256(abi.encodePacked(nonTyped ? TRON_SIGN_HEADER_53 : TRON_SIGN_HEADER, encodedSwap, recipient));
-//     } else if (nonTyped) {
-//       digest = keccak256(abi.encodePacked(ETH_SIGN_HEADER_52, encodedSwap, recipient));
-//     } else {
-//       bytes32 typehash = _outChainFrom(encodedSwap) == 0x00c3 ? RELEASE_TO_TRON_TYPE_HASH : RELEASE_TYPE_HASH;
-//       assembly {
-//         mstore(20, recipient)
-//         mstore(0, encodedSwap)
-//         mstore(32, keccak256(0, 52))
-//         mstore(0, typehash)
-//         digest := keccak256(0, 64)
-//       }
-//     }
-//     require(signer == ecrecover(digest, v, r, s), "Invalid signature");
-//   }
+fn _checkReleaseSignature(
+    encodedSwap: u256,
+    recipient: EthAddress,
+    r: u256,
+    yParityAndS: u256,
+    signer: EthAddress,
+) {
+    let nonTyped = _signNonTyped(encodedSwap);
 
+    let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
+        let mut bytes = MesonConstants::getTronSignHeaderBytes(
+            is32: if nonTyped { false } else { true }, is33: false,
+        );
+        bytes.append_u256(encodedSwap);
+        let recipient_u256: u256 = recipient.address.into();
+        bytes.append_u128_packed(recipient_u256.high, 4);
+        bytes.append_u128(recipient_u256.low);
+        bytes
+    } else if nonTyped {
+        let mut bytes = MesonConstants::getEthSignHeaderBytes(is32: false);
+        bytes.append_u256(encodedSwap);
+        let recipient_u256: u256 = recipient.address.into();
+        bytes.append_u128_packed(recipient_u256.high, 4);
+        bytes.append_u128(recipient_u256.low);
+        bytes
+    } else {
+        let mut msgHashBytes = BytesTrait::new_empty();
+        msgHashBytes.append_u256(encodedSwap);
+        let recipient_u256: u256 = recipient.address.into();
+        msgHashBytes.append_u128_packed(recipient_u256.high, 4);
+        msgHashBytes.append_u128(recipient_u256.low);
+        let msgHash = msgHashBytes.keccak();
+        let typeHash = if _outChainFrom(encodedSwap) == 0x00c3 {
+            MesonConstants::RELEASE_TO_TRON_TYPE_HASH
+        } else {
+            MesonConstants::RELEASE_TYPE_HASH
+        };
+        let bytes = BytesTrait::new(64, array![
+            typeHash.high, typeHash.low,
+            msgHash.high, msgHash.low,
+        ]);
+        bytes
+    };
+
+    let digest = signingData.keccak();
+    _checkSignature(digest, r, yParityAndS, signer);
+}
 
 fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress) {
     let s = yParityAndS & 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
@@ -266,4 +287,35 @@ fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress)
 
     let signature = signature_from_vrs(v, r, s);
     verify_eth_signature(digest, signature, signer);
+}
+
+// Only for testing
+#[test]
+#[available_gas(20000000)]
+fn test_get_swap_id() {
+    let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
+    let initiator = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+    let swap_id = _getSwapId(encodedSwap, initiator);
+    assert(swap_id == 0xe3a84cd4912a01989c6cd24e41d3d94baf143242fbf1da26eb7eac08c347b638, 'Failed');
+}
+
+#[test]
+#[available_gas(50000000)]
+fn test_check_request_signature() {
+    let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
+    let r = 0xb3184c257cf973069250eefd849a74d27250f8343cbda7615191149dd3c1b61d_u256;
+    let yParityAndS = 0x5d4e2b5ecc76a59baabf10a8d5d116edb95a5b2055b9b19f71524096975b29c2_u256;
+    let signer: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+    _checkRequestSignature(encodedSwap, r, yParityAndS, signer);
+}
+
+#[test]
+#[available_gas(50000000)]
+fn test_check_signature() {
+    let encoded_swap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21_u256;
+    let recipient: EthAddress = 0x01015ace920c716794445979be68d402d28b2805_u256.into();
+    let r = 0x1205361aabc89e5b30592a2c95592ddc127050610efe92ff6455c5cfd43bdd82_u256;
+    let yParityAndS = 0x5853edcf1fa72f10992b46721d17cb3191a85cefd2f8325b1ac59c7d498fa212_u256;
+    let eth_addr: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+    _checkReleaseSignature(encoded_swap, recipient, r, yParityAndS, eth_addr);
 }
