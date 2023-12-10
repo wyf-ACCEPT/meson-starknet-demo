@@ -7,9 +7,9 @@ version = "0.1.0"
 [dependencies]
 alexandria_math = { git = "https://github.com/keep-starknet-strange/alexandria" }
 alexandria_bytes = { git = "https://github.com/keep-starknet-strange/alexandria" }
-openzeppelin = { git = "https://github.com/openzeppelin/cairo-contracts" }
 snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry" }
 starknet = ">=2.3.1"
+openzeppelin = { git = "https://github.com/openzeppelin/cairo-contracts" }
 
 [[target.starknet-contract]]
 casm = true

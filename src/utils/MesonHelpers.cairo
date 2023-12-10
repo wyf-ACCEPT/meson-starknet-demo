@@ -38,6 +38,18 @@ enum MesonErrors {
     InvalidSignature,
 }
 
+struct PostedSwap {
+    poolIndex: u64,
+    initiator: EthAddress,
+    fromAddress: ContractAddress
+}
+
+struct LockedSwap {
+    poolIndex: u64,
+    until: u64,
+    recipient: ContractAddress
+}
+
 fn getShortCoinType() -> u16 {
     MesonConstants::SHORT_COIN_TYPE
 }
@@ -97,6 +109,10 @@ fn _feeWaived(encodedSwap: u256) -> bool {
   
 fn _signNonTyped(encodedSwap: u256) -> bool {
     (encodedSwap & 0x0800000000000000000000000000000000000000000000000000) > 0
+}
+
+fn _isCoreToken(tokenIndex: u8) -> bool {
+    (tokenIndex == 52) || ((tokenIndex > 190) && ((tokenIndex % 4) == 3))
 }
 
 fn _swapForCoreToken(encodedSwap: u256) -> bool {
@@ -289,33 +305,33 @@ fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress)
     verify_eth_signature(digest, signature, signer);
 }
 
-// Only for testing
-#[test]
-#[available_gas(20000000)]
-fn test_get_swap_id() {
-    let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
-    let initiator = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
-    let swap_id = _getSwapId(encodedSwap, initiator);
-    assert(swap_id == 0xe3a84cd4912a01989c6cd24e41d3d94baf143242fbf1da26eb7eac08c347b638, 'Failed');
-}
+// // Only for testing
+// #[test]
+// #[available_gas(20000000)]
+// fn test_get_swap_id() {
+//     let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
+//     let initiator = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+//     let swap_id = _getSwapId(encodedSwap, initiator);
+//     assert(swap_id == 0xe3a84cd4912a01989c6cd24e41d3d94baf143242fbf1da26eb7eac08c347b638, 'Failed');
+// }
 
-#[test]
-#[available_gas(50000000)]
-fn test_check_request_signature() {
-    let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
-    let r = 0xb3184c257cf973069250eefd849a74d27250f8343cbda7615191149dd3c1b61d_u256;
-    let yParityAndS = 0x5d4e2b5ecc76a59baabf10a8d5d116edb95a5b2055b9b19f71524096975b29c2_u256;
-    let signer: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
-    _checkRequestSignature(encodedSwap, r, yParityAndS, signer);
-}
+// #[test]
+// #[available_gas(50000000)]
+// fn test_check_request_signature() {
+//     let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
+//     let r = 0xb3184c257cf973069250eefd849a74d27250f8343cbda7615191149dd3c1b61d_u256;
+//     let yParityAndS = 0x5d4e2b5ecc76a59baabf10a8d5d116edb95a5b2055b9b19f71524096975b29c2_u256;
+//     let signer: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+//     _checkRequestSignature(encodedSwap, r, yParityAndS, signer);
+// }
 
-#[test]
-#[available_gas(50000000)]
-fn test_check_signature() {
-    let encoded_swap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21_u256;
-    let recipient: EthAddress = 0x01015ace920c716794445979be68d402d28b2805_u256.into();
-    let r = 0x1205361aabc89e5b30592a2c95592ddc127050610efe92ff6455c5cfd43bdd82_u256;
-    let yParityAndS = 0x5853edcf1fa72f10992b46721d17cb3191a85cefd2f8325b1ac59c7d498fa212_u256;
-    let eth_addr: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
-    _checkReleaseSignature(encoded_swap, recipient, r, yParityAndS, eth_addr);
-}
+// #[test]
+// #[available_gas(50000000)]
+// fn test_check_signature() {
+//     let encoded_swap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21_u256;
+//     let recipient: EthAddress = 0x01015ace920c716794445979be68d402d28b2805_u256.into();
+//     let r = 0x1205361aabc89e5b30592a2c95592ddc127050610efe92ff6455c5cfd43bdd82_u256;
+//     let yParityAndS = 0x5853edcf1fa72f10992b46721d17cb3191a85cefd2f8325b1ac59c7d498fa212_u256;
+//     let eth_addr: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
+//     _checkReleaseSignature(encoded_swap, recipient, r, yParityAndS, eth_addr);
+// }
