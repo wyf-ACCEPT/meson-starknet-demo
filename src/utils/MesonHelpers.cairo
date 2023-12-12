@@ -138,6 +138,10 @@ fn _coreTokenAmount(encodedSwap: u256) -> u256 {
     }
 }
 
+fn _needAdjustAmount(tokenIndex: u8) -> bool {
+    tokenIndex > 32
+}
+
 fn _amountToLock(encodedSwap: u256) -> u256 {
     _amountFrom(encodedSwap) - _feeForLp(encodedSwap) - _amountForCoreTokenFrom(encodedSwap)
 }
