@@ -1,15 +1,5 @@
 use starknet::ContractAddress;
 
-#[starknet::interface]
-trait MesonManagerTrait<TState> {
-    fn getSupportedTokens(self: @TState) -> (Array<ContractAddress>, Array<u8>);
-    // addSupportToken
-    // removeSupportToken
-    // transferOwnership
-    // transferPremiumManager
-    // withdrawServiceFee
-}
-
 #[starknet::component]
 mod MesonStatesComponent {
     use starknet::{
@@ -20,7 +10,6 @@ mod MesonStatesComponent {
         IERC20Dispatcher, IERC20DispatcherTrait
     };
     use meson_starknet_demo::utils::MesonHelpers::{
-        PostedSwap, LockedSwap,
         _poolTokenIndexFrom, _isCoreToken, _needAdjustAmount
     };
 
@@ -33,42 +22,24 @@ mod MesonStatesComponent {
         poolOfAuthorizedAddr: LegacyMap<ContractAddress, u64>,
         indexOfToken: LegacyMap<ContractAddress, u8>,
         tokenForIndex: LegacyMap<u8, ContractAddress>,
-        postedSwaps: LegacyMap<u256, PostedSwap>,
-        lockedSwaps: LegacyMap<u256, LockedSwap>,
+        postedSwaps: LegacyMap<
+            u256, (u64, EthAddress, ContractAddress)
+        >,  // Customized struct cannot be used as the value of LegacyMap
+        lockedSwaps: LegacyMap<
+            u256, (u64, u64, ContractAddress)
+        >,  // Customized struct cannot be used as the value of LegacyMap
     }
 
-    #[embeddable_as(MesonManagerImpl)]
-    impl MesonManager<
-        TContractState, +HasComponent<TContractState>
-    > of super::MesonManagerTrait<ComponentState<TContractState>> {
-        
-        // TODO: test this function
-        fn getSupportedTokens(self: @ComponentState<TContractState>) 
-                -> (Array<ContractAddress>, Array<u8>) {
-            let mut tokens: Array<ContractAddress> = array![];
-            let mut tokenIndexes: Array<u8> = array![];
-            let mut i = 1;
-            loop {
-                let token = self.tokenForIndex.read(i);
-                if token != ContractAddressZeroable::zero() {
-                    tokens.append(token);
-                    tokenIndexes.append(i);
-                }
-                if i == 255 {
-                    break;
-                }
-                i += 1;
-            };
-
-            (tokens, tokenIndexes)
-        }
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        // TODO: add events
     }
 
     #[generate_trait]       // Internal functions that can be used in son contracts
-    impl MesonStatesInternal<
+    impl InternalImpl<
         TContractState, +HasComponent<TContractState>
     > of InternalTrait<TContractState> {
-        
         fn poolTokenBalance(
             self: @ComponentState<TContractState>, 
             token: ContractAddress,
@@ -170,8 +141,28 @@ mod MesonStatesComponent {
         }
 
         // _transferToContract: Don't need to write this function
+
+        fn _transferOwnership(
+            ref self: ComponentState<TContractState>,
+            newOwner: ContractAddress
+        ) {
+            assert(
+                newOwner != ContractAddressZeroable::zero(), 
+                'New owner cannot be zero!'
+            );
+            self.owner.write(newOwner);
+        }
+
+        fn _transferPremiumManager(
+            ref self: ComponentState<TContractState>,
+            newPremiumManager: ContractAddress
+        ) {
+            assert(
+                newPremiumManager != ContractAddressZeroable::zero(), 
+                'New manager cannot be zero!'
+            );
+            self.premiumManager.write(newPremiumManager);
+        }
     }
-
-
 
 }

@@ -1,3 +1,4 @@
+// This file contains the functions that don't need to change or view any state.
 use core::traits::TryInto;
 use core::option::OptionTrait;
 use starknet::{ContractAddress, EthAddress};
@@ -38,24 +39,42 @@ enum MesonErrors {
     InvalidSignature,
 }
 
-struct PostedSwap {
-    poolIndex: u64,
-    initiator: EthAddress,
-    fromAddress: ContractAddress
-}
+// struct PostedSwap {
+//     poolIndex: u64,
+//     initiator: EthAddress,
+//     fromAddress: ContractAddress
+// }
 
-struct LockedSwap {
-    poolIndex: u64,
-    until: u64,
-    recipient: ContractAddress
-}
+// struct LockedSwap {
+//     poolIndex: u64,
+//     until: u64,
+//     recipient: ContractAddress
+// }
 
-fn getShortCoinType() -> u16 {
-    MesonConstants::SHORT_COIN_TYPE
-}
+// fn _packPostedSwap(postedSwap: PostedSwap) -> (u64, EthAddress, ContractAddress) {
+//     (postedSwap.poolIndex, postedSwap.initiator, postedSwap.fromAddress)
+// }
 
-use debug::PrintTrait;
-// TODO: Test this!
+// fn _unpackPostedSwap(poolIndex: u64, initiator: EthAddress, fromAddress: ContractAddress) -> PostedSwap {
+//     PostedSwap {
+//         poolIndex: poolIndex,
+//         initiator: initiator,
+//         fromAddress: fromAddress
+//     }
+// }
+
+// fn _packLockedSwap(lockedSwap: LockedSwap) -> (u64, u64, ContractAddress) {
+//     (lockedSwap.poolIndex, lockedSwap.until, lockedSwap.recipient)
+// }
+
+// fn _unpackLockedSwap(poolIndex: u64, until: u64, recipient: ContractAddress) -> LockedSwap {
+//     LockedSwap {
+//         poolIndex: poolIndex,
+//         until: until,
+//         recipient: recipient
+//     }
+// }
+
 fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
     let mut bytes = BytesTrait::new_empty();
     bytes.append_u256(encodedSwap);
@@ -166,13 +185,12 @@ fn _outTokenIndexFrom(encodedSwap: u256) -> u8 {
     ((encodedSwap / POW_2_24) & U8_MAX).try_into().unwrap()
 }
 
-fn _tokenType(tokenIndex: u8) -> Result<u8, MesonErrors> {
+fn _tokenType(tokenIndex: u8) -> u8 {
+    assert(tokenIndex >= 192 || tokenIndex < 65, 'Token index not allowed!');
     if tokenIndex >= 192 {
-        Result::Ok(tokenIndex / 4)  // Non stablecoins
-    } else if tokenIndex < 65 {
-        Result::Ok(0_u8)    // Stablecoins
+        tokenIndex / 4  // Non stablecoins
     } else {
-        Result::Err(MesonErrors::TokenIndexNotAllowed)
+        0               // Stablecoins
     }
 }
 
@@ -180,25 +198,25 @@ fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u64 {   // o
     ((encodedSwap & 0xFF000000) * POW_2_16).try_into().unwrap() | poolIndex
 }
 
-fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
-    (postedSwap / POW_2_40).into()
-}
+// fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
+//     (postedSwap / POW_2_40).into()
+// }
 
-fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
-    (postedSwap & U40_MAX).try_into().unwrap()
-}
+// fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
+//     (postedSwap & U40_MAX).try_into().unwrap()
+// }
 
-fn _lockedSwapFrom(until: u256, poolIndex: u64) -> u128 {   // original (uint256, uint40) -> uint80
-    ((until * POW_2_40).try_into().unwrap() | poolIndex).into()
-}
+// fn _lockedSwapFrom(until: u256, poolIndex: u64) -> u128 {   // original (uint256, uint40) -> uint80
+//     ((until * POW_2_40).try_into().unwrap() | poolIndex).into()
+// }
 
-fn _poolIndexFromLocked(lockedSwap: u128) -> u64 {  // original (uint80) -> uint40
-    (lockedSwap.into() & U40_MAX).try_into().unwrap()
-}
+// fn _poolIndexFromLocked(lockedSwap: u128) -> u64 {  // original (uint80) -> uint40
+//     (lockedSwap.into() & U40_MAX).try_into().unwrap()
+// }
 
-fn _untilFromLocked(lockedSwap: u128) -> u256 {  // original (uint80) -> uint256
-    (lockedSwap.into() / POW_2_40).into()
-}
+// fn _untilFromLocked(lockedSwap: u128) -> u256 {  // original (uint80) -> uint256
+//     (lockedSwap.into() / POW_2_40).into()
+// }
 
 fn _poolTokenIndexFrom(tokenIndex: u8, poolIndex: u64) -> u64 {     // original (uint8, uint40) -> uint48
     (tokenIndex.into() * POW_2_40).try_into().unwrap() | poolIndex
