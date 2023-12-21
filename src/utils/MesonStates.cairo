@@ -63,7 +63,7 @@ mod MesonStatesComponent {
             self.balanceOfPoolToken.read(poolTokenIndex)
         }
 
-        fn _unsafeDepositToken(
+        fn _depositToken(
             ref self: ComponentState<TContractState>,
             tokenIndex: u8,
             sender: ContractAddress,

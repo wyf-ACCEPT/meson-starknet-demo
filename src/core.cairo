@@ -6,17 +6,22 @@ use meson_starknet_demo::interface::{
 
 #[starknet::contract]
 mod Meson {
-    use meson_starknet_demo::interface::IMesonManager::MesonManagerTrait;
-    use meson_starknet_demo::utils::MesonConstants;
-    use meson_starknet_demo::utils::MesonHelpers::{
-        _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom,
-        _poolTokenIndexFrom, _amountFrom, _expireTsFrom
-    };
-    use starknet::{
+    use core::traits::TryInto;
+use meson_starknet_demo::interface::IMesonPools::MesonPoolsTrait;
+use starknet::{
         EthAddress, ContractAddress,
         contract_address::ContractAddressZeroable,
         eth_address::EthAddressZeroable,
         get_caller_address, get_block_timestamp,
+    };
+
+    use meson_starknet_demo::interface::IMesonManager::MesonManagerTrait;
+    use meson_starknet_demo::utils::MesonConstants;
+    use meson_starknet_demo::utils::MesonHelpers::{
+        _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom, _outChainFrom,
+        _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
+        _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
+        _checkRequestSignature, _checkReleaseSignature, _feeWaived,
     };
     use meson_starknet_demo::utils::MesonStates::MesonStatesComponent;
     
@@ -40,6 +45,7 @@ mod Meson {
 
     #[abi(embed_v0)]
     impl MesonManager of super::MesonManagerTrait<ContractState> {
+
         // View functions
         fn getSupportedTokens(self: @ContractState) -> (Array<ContractAddress>, Array<u8>) {
             // TODO: test this function
@@ -116,6 +122,7 @@ mod Meson {
 
     #[abi(embed_v0)]
     impl MesonSwap of super::MesonSwapTrait<ContractState> {
+
         // View functions
         fn getPostedSwap(self: @ContractState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress) {
             self.storage.postedSwaps.read(encodedSwap)
@@ -148,16 +155,293 @@ mod Meson {
         }
 
         // Write functions
-        fn postSwap(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, postingValue: u256) {}
+        fn postSwap(ref self: ContractState, encodedSwap: u256, initiator: EthAddress, fromAddress: ContractAddress, poolIndex: u64) {
+            // TODO: This functions is only for user?
+            self.verifyEncodedSwap(encodedSwap);
 
-        fn bondSwap(ref self: ContractState, encodedSwap: u256, poolIndex: u64) {}
+            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            let fromAddress = get_caller_address();
+            
+            // TODO: Don't need to check request signature?
+            // _checkRequestSignature(encodedSwap, r, yParityAndS, initiator);
 
-        fn cancelSwap(ref self: ContractState, encodedSwap: u256) {}
+            self.storage.postedSwaps.write(
+                encodedSwap, (poolIndex, initiator, fromAddress)
+            );
+            self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+        }
 
-        fn executeSwap(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, recipient: u256, depositToPool: bool) {}
+        fn bondSwap(ref self: ContractState, encodedSwap: u256, poolIndex: u64) {
+            let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
 
-        fn directExecuteSwap(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: EthAddress) {}
-        
+            assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
+            assert(oldPoolIndex == 0, 'Swap bonded to others!');
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(fromAddress) == poolIndex,
+                'Not authorized address!'
+            );
+
+            self.storage.postedSwaps.write(
+                encodedSwap, (poolIndex, initiator, fromAddress)
+            );
+        }
+
+        fn cancelSwap(ref self: ContractState, encodedSwap: u256) {
+            let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            
+            assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
+            assert(
+                _expireTsFrom(encodedSwap) < get_block_timestamp().into(), 
+                'Swap is still locked!'
+            );
+
+            self.storage.postedSwaps.write(
+                encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
+            );
+            self.storage._safeTransfer(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+        }
+
+        fn executeSwap(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, recipient: EthAddress, depositToPool: bool) {
+            let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let amount = _amountFrom(encodedSwap);
+            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            let poolTokenIndex = _poolTokenIndexFrom(tokenIndex, poolIndex);
+
+            assert(poolIndex != 0, 'Pool index cannot be 0!');
+            _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+
+            self.storage.postedSwaps.write(
+                encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
+            );
+            if depositToPool {
+                self.storage.balanceOfPoolToken.write(
+                    poolTokenIndex, 
+                    self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
+                );
+            } else {
+                let poolOwner = self.storage.ownerOfPool.read(poolIndex);
+                self.storage._safeTransfer(tokenIndex, poolOwner, amount);
+            }
+        }
+
+    }
+
+    #[abi(embed_v0)]
+    impl MesonPools of super::MesonPoolsTrait<ContractState> {
+
+        // View functions
+        fn getLockedSwap(self: @ContractState, swapId: u256) -> (u64, u64, ContractAddress) {
+            self.storage.lockedSwaps.read(swapId)
+        }
+
+        // Modifier
+        fn forTargetChain(self: @ContractState, encodedSwap: u256) {
+            assert(
+                _outChainFrom(encodedSwap) == MesonConstants::SHORT_COIN_TYPE,
+                'Swap not for this chain!'
+            );
+        }
+
+        // Write functions (LPs)
+        fn depositAndRegister(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
+            let poolOwner = get_caller_address();
+            let poolIndex = _poolIndexFrom(poolTokenIndex);
+            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+
+            assert(amount > 0, 'Amount must be positive!');
+            assert(poolIndex != 0, 'Cannot use 0 as pool index!');
+            assert(
+                self.storage.ownerOfPool.read(poolIndex) == ContractAddressZeroable::zero(),
+                'Pool index already registered!'
+            );
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(poolOwner) == 0,
+                'Signer already registered!'
+            );
+
+            self.storage.ownerOfPool.write(poolIndex, poolOwner);
+            self.storage.poolOfAuthorizedAddr.write(poolOwner, poolIndex);
+
+            self.storage._depositToken(tokenIndex, poolOwner, amount);
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex, 
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
+            );
+        }
+
+        fn deposit(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
+            let authrizedAddress = get_caller_address();
+            let poolIndex = _poolIndexFrom(poolTokenIndex);
+            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+
+            assert(amount > 0, 'Amount must be positive!');
+            assert(poolIndex != 0, 'Cannot use 0 as pool index!');
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(authrizedAddress) == poolIndex,
+                'Need an authorized address!'
+            );
+
+            self.storage._depositToken(tokenIndex, authrizedAddress, amount);
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex, 
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
+            );
+        }
+
+        fn withdraw(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
+            let poolOwner = get_caller_address();
+            let poolIndex = _poolIndexFrom(poolTokenIndex);
+            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+
+            assert(amount > 0, 'Amount must be positive!');
+            assert(poolIndex != 0, 'Cannot use 0 as pool index!');
+            assert(
+                self.storage.ownerOfPool.read(poolIndex) == poolOwner,
+                'Need the pool owner!'
+            );
+
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex, 
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) - amount
+            );
+            self.storage._safeTransfer(tokenIndex, poolOwner, amount);
+        }
+
+        fn addAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
+            let poolOwner = get_caller_address();
+            let poolIndex = self.storage.poolOfAuthorizedAddr.read(poolOwner);
+
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(addr) == 0,
+                'Authorized for another pool!'
+            );
+            assert(poolIndex != 0, 'Signer have not registered!');
+            assert(
+                poolOwner == self.storage.ownerOfPool.read(poolIndex),
+                'Signer should be pool owner!'
+            );
+
+            self.storage.poolOfAuthorizedAddr.write(addr, poolIndex);
+        }
+
+        fn removeAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
+            let poolOwner = get_caller_address();
+            let poolIndex = self.storage.poolOfAuthorizedAddr.read(poolOwner);
+
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(addr) == poolIndex,
+                'Not an authorized address!'
+            );
+            assert(poolIndex != 0, 'Signer have not registered!');
+            assert(
+                poolOwner == self.storage.ownerOfPool.read(poolIndex),
+                'Signer should be pool owner!'
+            );
+
+            self.storage.poolOfAuthorizedAddr.write(addr, 0);
+        }
+
+        fn transferPoolOwner(ref self: ContractState, addr: ContractAddress) {
+            let poolOwner = get_caller_address();
+            let poolIndex = self.storage.poolOfAuthorizedAddr.read(poolOwner);
+
+            assert(
+                self.storage.poolOfAuthorizedAddr.read(addr) == poolIndex,
+                'Not an authorized address!'
+            );
+            assert(poolIndex != 0, 'Signer have not registered!');
+            assert(
+                poolOwner == self.storage.ownerOfPool.read(poolIndex),
+                'Signer should be pool owner!'
+            );
+
+            self.storage.ownerOfPool.write(poolIndex, addr);
+        }
+
+        // Write functions (users)
+        fn lockSwap(ref self: ContractState, encodedSwap: u256, initiator: EthAddress, recipient: ContractAddress) {
+            self.forTargetChain(encodedSwap);
+
+            let swapId = _getSwapId(encodedSwap, initiator);
+            let (existPoolIndex, _, _) = self.getLockedSwap(swapId);
+            let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
+            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
+            let until = get_block_timestamp().into() + MesonConstants::LOCK_TIME_PERIOD;
+            let coreAmount = _coreTokenAmount(encodedSwap);
+
+            assert(existPoolIndex == 0, 'Swap already exists');
+            assert(poolIndex != 0, 'Caller not registered!');
+            assert(
+                until < _expireTsFrom(encodedSwap) - 5 * 60,    // 5 minutes left
+                'Expire time is soon!'
+            );
+
+            if coreAmount > 0 {
+                // TODO: add core token's case
+            }
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex, 
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) - _amountToLock(encodedSwap)
+            );
+            self.storage.lockedSwaps.write(
+                swapId, (poolIndex, until.try_into().unwrap(), recipient)
+            );
+
+        }
+
+        fn unlock(ref self: ContractState, encodedSwap: u256, initiator: EthAddress) {
+            let swapId = _getSwapId(encodedSwap, initiator);
+            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
+            let coreAmount = _coreTokenAmount(encodedSwap);
+
+            assert(poolIndex != 0, 'Swap does not exist!');
+            assert(until < get_block_timestamp().into(), 'Swap still in lock!');
+
+            if coreAmount > 0 {
+                // TODO
+            }
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex, 
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) + _amountToLock(encodedSwap)
+            );
+            self.storage.lockedSwaps.write(
+                swapId, (0, 0, ContractAddressZeroable::zero())
+            );
+        }
+
+        fn release(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress) {
+            let feeWaived = _feeWaived(encodedSwap);
+            if feeWaived { self.onlyPremiumManager() };
+            let swapId = _getSwapId(encodedSwap, initiator);
+            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+
+            // let recipientAsEth = 
+
+            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+            // _lockedSwaps[swapId] = 1;
+
+            assert(poolIndex != 0, 'Swap does not exist!');
+
+            assert(
+                _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
+                'Cannot release. Expired!'
+            );
+            assert(
+                recipient != ContractAddressZeroable::zero(), 
+                'Recipient cannot be zero!'
+            );
+
+            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+
+
+    // // LP fee will be subtracted from the swap
+
+        }
+
+        fn directRelease(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: EthAddress) {}
+
     }
 
 }

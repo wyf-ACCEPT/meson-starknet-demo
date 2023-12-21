@@ -3,7 +3,7 @@ use starknet::{ContractAddress, EthAddress};
 #[starknet::interface]
 trait MesonPoolsTrait<TState> {
     // View functions
-    fn getLockedSwap(self: @TState, encodedSwap: u256, initiator: EthAddress) -> (ContractAddress, u64);
+    fn getLockedSwap(self: @TState, swapId: u256) -> (u64, u64, ContractAddress);
 
     // Modifier
     fn forTargetChain(self: @TState, encodedSwap: u256);     // Need assert inside
@@ -17,9 +17,9 @@ trait MesonPoolsTrait<TState> {
     fn transferPoolOwner(ref self: TState, addr: ContractAddress);
 
     // Write functions (users)
-    fn lockSwap(ref self: TState, encodedSwap: u256, initiator: EthAddress);
+    fn lockSwap(ref self: TState, encodedSwap: u256, initiator: EthAddress, recipient: ContractAddress);
     fn unlock(ref self: TState, encodedSwap: u256, initiator: EthAddress);
-    fn release(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: ContractAddress);
+    fn release(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress);
     fn directRelease(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: EthAddress);
 }
 

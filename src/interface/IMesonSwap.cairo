@@ -9,9 +9,8 @@ trait MesonSwapTrait<TState> {
     fn verifyEncodedSwap(self: @TState, encodedSwap: u256);     // Need assert inside
 
     // Write functions
-    fn postSwap(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, postingValue: u256);
+    fn postSwap(ref self: TState, encodedSwap: u256, initiator: EthAddress, fromAddress: ContractAddress, poolIndex: u64);
     fn bondSwap(ref self: TState, encodedSwap: u256, poolIndex: u64);
     fn cancelSwap(ref self: TState, encodedSwap: u256);
-    fn executeSwap(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, recipient: u256, depositToPool: bool);
-    fn directExecuteSwap(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: EthAddress);
+    fn executeSwap(ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, recipient: EthAddress, depositToPool: bool);
 }
