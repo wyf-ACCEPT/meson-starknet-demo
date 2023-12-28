@@ -1,7 +1,7 @@
 use alexandria_bytes::bytes::BytesTrait;
 use debug::PrintTrait;
-use meson_starknet_demo::utils::MesonHelpers;
-use meson_starknet_demo::utils::MesonConstants;
+use meson_starknet::utils::MesonHelpers;
+use meson_starknet::utils::MesonConstants;
 
 // #[test]
 // #[available_gas(20000000)]

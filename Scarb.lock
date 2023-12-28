@@ -35,7 +35,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "meson_starknet_demo"
+name = "meson_starknet"
 version = "0.1.0"
 dependencies = [
  "alexandria_bytes",

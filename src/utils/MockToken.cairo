@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod MyToken {
+mod MockToken {
     use openzeppelin::token::erc20::ERC20Component;
     use openzeppelin::token::erc20::interface::IERC20Metadata;
     use starknet::ContractAddress;

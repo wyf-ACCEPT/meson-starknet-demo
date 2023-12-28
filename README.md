@@ -1,4 +1,4 @@
-# Meson-HTLC-Demo
+# Meson Contracts Cairo
 
 ## Introduction
 
@@ -49,7 +49,7 @@ Begin by compiling the Token contract, followed by its declaration and deploymen
 
 ```bash
 scarb build
-starkli declare ./target/dev/meson_starknet_demo_MyUSDToken.contract_class.json
+starkli declare ./target/dev/meson_starknet_MyUSDToken.contract_class.json
 
 # ========================== Example Output ==========================
 # Declaring Cairo 1 class: 0x03fda322e44c0e24e5e99686104bdf5c330fc854c886cc8c624fe9a19c70f18d
@@ -76,7 +76,7 @@ export mytoken=<contract_address_token>
 Then compile, declare, and deploy the HTLC contract.
 
 ```bash
-starkli declare ./target/dev/meson_starknet_demo_HashTimeLock.contract_class.json
+starkli declare ./target/dev/meson_starknet_HashTimeLock.contract_class.json
 # ... (the output)
 
 # Use the "class hash" value above

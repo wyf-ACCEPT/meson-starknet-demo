@@ -9,7 +9,7 @@ mod MesonStatesComponent {
     use openzeppelin::token::erc20::interface::{
         IERC20Dispatcher, IERC20DispatcherTrait
     };
-    use meson_starknet_demo::utils::MesonHelpers::{
+    use meson_starknet::utils::MesonHelpers::{
         _poolTokenIndexFrom, _isCoreToken, _needAdjustAmount
     };
 

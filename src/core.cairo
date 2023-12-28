@@ -6,17 +6,17 @@ mod Meson {
         eth_address::EthAddressZeroable,
         get_caller_address, get_block_timestamp, get_contract_address,
     };
-    use meson_starknet_demo::interface::{
+    use meson_starknet::interface::{
         MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
     };
-    use meson_starknet_demo::utils::MesonConstants;
-    use meson_starknet_demo::utils::MesonHelpers::{
+    use meson_starknet::utils::MesonConstants;
+    use meson_starknet::utils::MesonHelpers::{
         _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom, _outChainFrom,
         _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
         _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
         _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
     };
-    use meson_starknet_demo::utils::MesonStates::MesonStatesComponent;
+    use meson_starknet::utils::MesonStates::MesonStatesComponent;
     
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
 

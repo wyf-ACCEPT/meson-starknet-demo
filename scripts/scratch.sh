@@ -13,7 +13,7 @@ starkli account fetch $david --output $david_path
 
 # Deploy
 scarb build
-starkli declare ./target/dev/meson_starknet_demo_MyUSDToken.contract_class.json
+starkli declare ./target/dev/meson_starknet_MyUSDToken.contract_class.json
 
 # ========================== Example Output ==========================
 # Declaring Cairo 1 class: 0x03fda322e44c0e24e5e99686104bdf5c330fc854c886cc8c624fe9a19c70f18d
@@ -37,7 +37,7 @@ export mytoken=0x06fcc44611637613344ae8280bd1e10b569cd8dd7a49c2d466e760d86b301a0
 starkli call $mytoken name
 starkli call $mytoken balance_of $admin
 
-starkli declare ./target/dev/meson_starknet_demo_HashTimeLock.contract_class.json
+starkli declare ./target/dev/meson_starknet_HashTimeLock.contract_class.json
 starkli deploy 0x01e92394182f132059b89834651909e938810bd19379b75e3013732e94a8830d $mytoken
 export htlc=0x04c88290e58f8961f0185549d46dc490c4917b1655bdab8df83414959d23e9d1
 
