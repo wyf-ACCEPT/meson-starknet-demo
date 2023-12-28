@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 #[starknet::component]
 mod MesonStatesComponent {
     use starknet::{
-        ContractAddress, get_contract_address,
+        ContractAddress, EthAddress, get_contract_address,
         contract_address::ContractAddressZeroable
     };
     use openzeppelin::token::erc20::interface::{

@@ -23,7 +23,7 @@ const TRON_SIGN_HEADER: felt252 = '\x19TRON Signed Message:\n32\n';     // lengt
 const TRON_SIGN_HEADER_33: felt252 = '\x19TRON Signed Message:\n33\n';  // length=25
 const TRON_SIGN_HEADER_53: felt252 = '\x19TRON Signed Message:\n53\n';  // length=25
 
-fn getEthSignHeaderBytes(is32: bool) -> Bytes {
+fn _getEthSignHeaderBytes(is32: bool) -> Bytes {
     let mut bytes = BytesTrait::new_empty();
     let header: u256 = (if is32 { ETH_SIGN_HEADER } else { ETH_SIGN_HEADER_52 }).into();
     bytes.append_u128_packed(header.high, 12);
@@ -31,7 +31,7 @@ fn getEthSignHeaderBytes(is32: bool) -> Bytes {
     bytes
 }
 
-fn getTronSignHeaderBytes(is32: bool, is33: bool) -> Bytes {
+fn _getTronSignHeaderBytes(is32: bool, is33: bool) -> Bytes {
     let mut bytes = BytesTrait::new_empty();
     let header: u256 = (if is32 { TRON_SIGN_HEADER } else 
         if is33 { TRON_SIGN_HEADER_33 } else { TRON_SIGN_HEADER_53 }).into();

@@ -1,27 +1,20 @@
-use meson_starknet_demo::interface::{
-    IMesonManager::MesonManagerTrait,
-    IMesonSwap::MesonSwapTrait,
-    IMesonPools::MesonPoolsTrait,
-};
-
 #[starknet::contract]
 mod Meson {
-    use core::traits::TryInto;
-use meson_starknet_demo::interface::IMesonPools::MesonPoolsTrait;
-use starknet::{
+    use starknet::{
         EthAddress, ContractAddress,
         contract_address::ContractAddressZeroable,
         eth_address::EthAddressZeroable,
-        get_caller_address, get_block_timestamp,
+        get_caller_address, get_block_timestamp, get_contract_address,
     };
-
-    use meson_starknet_demo::interface::IMesonManager::MesonManagerTrait;
+    use meson_starknet_demo::interface::{
+        MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
+    };
     use meson_starknet_demo::utils::MesonConstants;
     use meson_starknet_demo::utils::MesonHelpers::{
         _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom, _outChainFrom,
         _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
         _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
-        _checkRequestSignature, _checkReleaseSignature, _feeWaived,
+        _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
     };
     use meson_starknet_demo::utils::MesonStates::MesonStatesComponent;
     
@@ -44,7 +37,7 @@ use starknet::{
     }
 
     #[abi(embed_v0)]
-    impl MesonManager of super::MesonManagerTrait<ContractState> {
+    impl MesonManager of MesonManagerTrait<ContractState> {
 
         // View functions
         fn getSupportedTokens(self: @ContractState) -> (Array<ContractAddress>, Array<u8>) {
@@ -121,7 +114,7 @@ use starknet::{
     }
 
     #[abi(embed_v0)]
-    impl MesonSwap of super::MesonSwapTrait<ContractState> {
+    impl MesonSwap of MesonSwapTrait<ContractState> {
 
         // View functions
         fn getPostedSwap(self: @ContractState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress) {
@@ -228,7 +221,7 @@ use starknet::{
     }
 
     #[abi(embed_v0)]
-    impl MesonPools of super::MesonPoolsTrait<ContractState> {
+    impl MesonPools of MesonPoolsTrait<ContractState> {
 
         // View functions
         fn getLockedSwap(self: @ContractState, swapId: u256) -> (u64, u64, ContractAddress) {
@@ -413,17 +406,15 @@ use starknet::{
 
         fn release(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress) {
             let feeWaived = _feeWaived(encodedSwap);
-            if feeWaived { self.onlyPremiumManager() };
             let swapId = _getSwapId(encodedSwap, initiator);
             let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let coreAmount = _coreTokenAmount(encodedSwap);
+            let recipientAsEth = _ethAddressFromStarknet(recipient);
+            let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
+            let mut releaseAmount = _amountToLock(encodedSwap);
 
-            // let recipientAsEth = 
-
-            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
-            // _lockedSwaps[swapId] = 1;
-
+            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
             assert(poolIndex != 0, 'Swap does not exist!');
-
             assert(
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
                 'Cannot release. Expired!'
@@ -433,14 +424,71 @@ use starknet::{
                 'Recipient cannot be zero!'
             );
 
-            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
-
-
-    // // LP fee will be subtracted from the swap
-
+            if feeWaived { 
+                self.onlyPremiumManager();
+            } else {
+                let serviceFee = _serviceFee(encodedSwap);
+                releaseAmount -= serviceFee;
+                self.storage.balanceOfPoolToken.write(
+                    serviceFeePoolTokenIndex,
+                    self.storage.balanceOfPoolToken.read(serviceFeePoolTokenIndex) + serviceFee
+                );
+            }
+            if coreAmount > 0 {
+                // TODO
+            }
+            // TODO: _callSkaleFaucet?
+            self.storage._safeTransfer(_outTokenIndexFrom(encodedSwap), recipient, releaseAmount);
+            self.storage.lockedSwaps.write(
+                swapId, (0, 0, get_contract_address())      
+            );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
         }
 
-        fn directRelease(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: EthAddress) {}
+        fn directRelease(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: ContractAddress) {
+            let feeWaived = _feeWaived(encodedSwap);
+            let swapId = _getSwapId(encodedSwap, initiator);
+            // let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
+            let (existPoolIndex, _, _) = self.getLockedSwap(swapId);
+            // let tokenIndex = _outTokenIndexFrom(encodedSwap);
+            let coreAmount = _coreTokenAmount(encodedSwap);
+            let recipientAsEth = _ethAddressFromStarknet(recipient);
+            let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
+            let mut releaseAmount = _amountToLock(encodedSwap);
+
+            self.forTargetChain(encodedSwap);
+            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
+            // assert(poolIndex != 0, 'Swap does not exist!');
+            assert(existPoolIndex == 0, 'Swap already exists');
+            assert(poolIndex != 0, 'Caller not registered!');
+            assert(
+                _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
+                'Cannot release. Expired!'
+            );
+            assert(
+                recipient != ContractAddressZeroable::zero(), 
+                'Recipient cannot be zero!'
+            );
+
+            if feeWaived { 
+                self.onlyPremiumManager();
+            } else {
+                let serviceFee = _serviceFee(encodedSwap);
+                releaseAmount -= serviceFee;
+                self.storage.balanceOfPoolToken.write(
+                    serviceFeePoolTokenIndex,
+                    self.storage.balanceOfPoolToken.read(serviceFeePoolTokenIndex) + serviceFee
+                );
+            }
+            if coreAmount > 0 {
+                // TODO
+            }
+            // TODO: _callSkaleFaucet?
+            self.storage._safeTransfer(_outTokenIndexFrom(encodedSwap), recipient, releaseAmount);
+            self.storage.lockedSwaps.write(
+                swapId, (0, 0, get_contract_address())      
+            );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
+        }
 
     }
 

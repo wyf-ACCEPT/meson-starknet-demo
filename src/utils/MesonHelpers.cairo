@@ -230,6 +230,12 @@ fn _poolIndexFrom(poolTokenIndex: u64) -> u64 {     // original (uint48) -> uint
     (poolTokenIndex.into() & U40_MAX).try_into().unwrap()
 }
 
+fn _ethAddressFromStarknet(starknetAddress: ContractAddress) -> EthAddress {
+    let starknetAddressFelt252: felt252 = starknetAddress.into();
+    let starknetAddressU256: u256 = starknetAddressFelt252.into();
+    starknetAddressU256.into()
+}
+
 fn _checkRequestSignature(
     encodedSwap: u256,
     r: u256,
@@ -239,13 +245,13 @@ fn _checkRequestSignature(
     let nonTyped = _signNonTyped(encodedSwap);
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes = MesonConstants::getTronSignHeaderBytes(
+        let mut bytes = MesonConstants::_getTronSignHeaderBytes(
             is32: if nonTyped { false } else { true }, is33: true,
         );
         bytes.append_u256(encodedSwap);
         bytes
     } else if nonTyped {
-        let mut bytes = MesonConstants::getEthSignHeaderBytes(is32: true);
+        let mut bytes = MesonConstants::_getEthSignHeaderBytes(is32: true);
         bytes.append_u256(encodedSwap);
         bytes
     } else {
@@ -275,7 +281,7 @@ fn _checkReleaseSignature(
     let nonTyped = _signNonTyped(encodedSwap);
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes = MesonConstants::getTronSignHeaderBytes(
+        let mut bytes = MesonConstants::_getTronSignHeaderBytes(
             is32: if nonTyped { false } else { true }, is33: false,
         );
         bytes.append_u256(encodedSwap);
@@ -284,7 +290,7 @@ fn _checkReleaseSignature(
         bytes.append_u128(recipient_u256.low);
         bytes
     } else if nonTyped {
-        let mut bytes = MesonConstants::getEthSignHeaderBytes(is32: false);
+        let mut bytes = MesonConstants::_getEthSignHeaderBytes(is32: false);
         bytes.append_u256(encodedSwap);
         let recipient_u256: u256 = recipient.address.into();
         bytes.append_u128_packed(recipient_u256.high, 4);
