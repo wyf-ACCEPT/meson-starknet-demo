@@ -66,6 +66,14 @@ main = async function () {
   )
   console.log('✅  Transaction done.')
 
+  console.log('\n🚀  Withdraw token...')
+  await provider.waitForTransaction(
+    (await meson.withdraw(
+      parseUnits('160', decimals), poolTokenIndex
+    )).transaction_hash
+  )
+  console.log('✅  Transaction done.')
+
   // log balances
   console.log('\n✅  Mock USDC balances:')
   console.log(
