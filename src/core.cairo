@@ -7,7 +7,7 @@ mod Meson {
         get_caller_address, get_block_timestamp, get_contract_address,
     };
     use meson_starknet::interface::{
-        MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
+        MesonViewStorageTrait, MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
     };
     use meson_starknet::utils::MesonConstants;
     use meson_starknet::utils::MesonHelpers::{
@@ -34,6 +34,56 @@ mod Meson {
     enum Event {
         #[flat]
         MesonEvent: MesonStatesComponent::Event
+    }
+
+    #[constructor]
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
+        self.storage.owner.write(owner);
+        self.storage.premiumManager.write(owner);
+    }
+
+    #[abi(embed_v0)]
+    impl MesonViewStorage of MesonViewStorageTrait<ContractState> {
+        
+        // View functions
+        fn getOwner(self: @ContractState) -> ContractAddress {
+            self.storage.owner.read()
+        }
+
+        fn getPremiumManager(self: @ContractState) -> ContractAddress {
+            self.storage.premiumManager.read()
+        }
+
+        fn getBalanceOfPoolToken(self: @ContractState, poolTokenIndex: u64) -> u256 {
+            self.storage.balanceOfPoolToken.read(poolTokenIndex)
+        }
+
+        fn getOwnerOfPool(self: @ContractState, poolIndex: u64) -> ContractAddress {
+            self.storage.ownerOfPool.read(poolIndex)
+        }
+
+        fn getPoolOfAuthorizedAddr(self: @ContractState, addr: ContractAddress) -> u64 {
+            self.storage.poolOfAuthorizedAddr.read(addr)
+        }
+
+        fn getIndexOfToken(self: @ContractState, token: ContractAddress) -> u8 {
+            self.storage.indexOfToken.read(token)
+        }
+
+        fn getTokenForIndex(self: @ContractState, index: u8) -> ContractAddress {
+            self.storage.tokenForIndex.read(index)
+        }
+
+        fn getPostedSwap(self: @ContractState, encodedSwap: u256) 
+            -> (u64, EthAddress, ContractAddress) {
+            self.storage.postedSwaps.read(encodedSwap)
+        }
+
+        fn getLockedSwap(self: @ContractState, swapId: u256) 
+            -> (u64, u64, ContractAddress) {
+            self.storage.lockedSwaps.read(swapId)
+        }
+        
     }
 
     #[abi(embed_v0)]
@@ -95,7 +145,9 @@ mod Meson {
             self.storage._transferPremiumManager(newPremiumManager);
         }
 
-        fn withdrawServiceFee(ref self: ContractState, tokenIndex: u8, amount: u256, toPoolIndex: u64) {
+        fn withdrawServiceFee(
+            ref self: ContractState, tokenIndex: u8, amount: u256, toPoolIndex: u64
+        ) {
             self.onlyOwner();
             assert(
                 self.storage.ownerOfPool.read(toPoolIndex) != ContractAddressZeroable::zero(),
@@ -116,11 +168,6 @@ mod Meson {
     #[abi(embed_v0)]
     impl MesonSwap of MesonSwapTrait<ContractState> {
 
-        // View functions
-        fn getPostedSwap(self: @ContractState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress) {
-            self.storage.postedSwaps.read(encodedSwap)
-        }
-
         // Modifier
         fn verifyEncodedSwap(self: @ContractState, encodedSwap: u256) {
             assert(
@@ -128,13 +175,17 @@ mod Meson {
                 'Swap not for this chain!'
             );
             assert(
-                _tokenType(_inTokenIndexFrom(encodedSwap)) == _tokenType(_outTokenIndexFrom(encodedSwap)),
+                _tokenType(_inTokenIndexFrom(encodedSwap)) == 
+                _tokenType(_outTokenIndexFrom(encodedSwap)),
                 'In & out token types not match!'
             );
 
             let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             assert(
-                poolIndex == 0 && initiator == EthAddressZeroable::zero() && fromAddress == ContractAddressZeroable::zero(), 'Swap already exists'
+                poolIndex == 0 && 
+                initiator == EthAddressZeroable::zero() && 
+                fromAddress == ContractAddressZeroable::zero(), 
+                'Swap already exists'
             );
 
             assert(
@@ -148,7 +199,13 @@ mod Meson {
         }
 
         // Write functions
-        fn postSwap(ref self: ContractState, encodedSwap: u256, initiator: EthAddress, fromAddress: ContractAddress, poolIndex: u64) {
+        fn postSwap(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            initiator: EthAddress, 
+            fromAddress: ContractAddress, 
+            poolIndex: u64
+        ) {
             // TODO: This functions is only for user?
             self.verifyEncodedSwap(encodedSwap);
 
@@ -195,7 +252,14 @@ mod Meson {
             self.storage._safeTransfer(tokenIndex, fromAddress, _amountFrom(encodedSwap));
         }
 
-        fn executeSwap(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, recipient: EthAddress, depositToPool: bool) {
+        fn executeSwap(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            r: u256, 
+            yParityAndS: u256, 
+            recipient: EthAddress, 
+            depositToPool: bool
+        ) {
             let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             let amount = _amountFrom(encodedSwap);
             let tokenIndex = _inTokenIndexFrom(encodedSwap);
@@ -222,11 +286,6 @@ mod Meson {
 
     #[abi(embed_v0)]
     impl MesonPools of MesonPoolsTrait<ContractState> {
-
-        // View functions
-        fn getLockedSwap(self: @ContractState, swapId: u256) -> (u64, u64, ContractAddress) {
-            self.storage.lockedSwaps.read(swapId)
-        }
 
         // Modifier
         fn forTargetChain(self: @ContractState, encodedSwap: u256) {
@@ -353,7 +412,12 @@ mod Meson {
         }
 
         // Write functions (users)
-        fn lockSwap(ref self: ContractState, encodedSwap: u256, initiator: EthAddress, recipient: ContractAddress) {
+        fn lockSwap(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            initiator: EthAddress, 
+            recipient: ContractAddress
+        ) {
             self.forTargetChain(encodedSwap);
 
             let swapId = _getSwapId(encodedSwap, initiator);
@@ -404,7 +468,13 @@ mod Meson {
             );
         }
 
-        fn release(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress) {
+        fn release(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            r: u256, 
+            yParityAndS: u256, 
+            initiator: EthAddress
+        ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
             let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
@@ -438,13 +508,22 @@ mod Meson {
                 // TODO
             }
             // TODO: _callSkaleFaucet?
-            self.storage._safeTransfer(_outTokenIndexFrom(encodedSwap), recipient, releaseAmount);
+            self.storage._safeTransfer(
+                _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
+            );
             self.storage.lockedSwaps.write(
                 swapId, (0, 0, get_contract_address())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
         }
 
-        fn directRelease(ref self: ContractState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress, recipient: ContractAddress) {
+        fn directRelease(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            r: u256, 
+            yParityAndS: u256, 
+            initiator: EthAddress, 
+            recipient: ContractAddress
+        ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
             // let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
@@ -484,7 +563,9 @@ mod Meson {
                 // TODO
             }
             // TODO: _callSkaleFaucet?
-            self.storage._safeTransfer(_outTokenIndexFrom(encodedSwap), recipient, releaseAmount);
+            self.storage._safeTransfer(
+                _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
+            );
             self.storage.lockedSwaps.write(
                 swapId, (0, 0, get_contract_address())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.

@@ -120,10 +120,16 @@ mod MesonStatesComponent {
             assert(index != 0, 'Cannot use 0 as token index');
             assert(token != ContractAddressZeroable::zero(), 'Cannot use zero address');
             assert(self.indexOfToken.read(token) == 0, 'Token has been added before');
-            assert(self.tokenForIndex.read(index) == ContractAddressZeroable::zero(), 'Index has been used');
+            assert(
+                self.tokenForIndex.read(index) == ContractAddressZeroable::zero(), 
+                'Index has been used'
+            );
             if _isCoreToken(index) {
                 // TODO: how to check this
-                //     assert(token == ContractAddressZeroable::zero(), "Core token requires adddress(0x1)");
+                //     assert(
+                //          token == ContractAddressZeroable::zero(), 
+                //          "Core token requires adddress(0x1)"
+                //     );
             }
             self.indexOfToken.write(token, index);
             self.tokenForIndex.write(index, token);

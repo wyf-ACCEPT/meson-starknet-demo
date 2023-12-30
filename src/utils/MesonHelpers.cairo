@@ -51,30 +51,6 @@ enum MesonErrors {
 //     recipient: ContractAddress
 // }
 
-// fn _packPostedSwap(postedSwap: PostedSwap) -> (u64, EthAddress, ContractAddress) {
-//     (postedSwap.poolIndex, postedSwap.initiator, postedSwap.fromAddress)
-// }
-
-// fn _unpackPostedSwap(poolIndex: u64, initiator: EthAddress, fromAddress: ContractAddress) -> PostedSwap {
-//     PostedSwap {
-//         poolIndex: poolIndex,
-//         initiator: initiator,
-//         fromAddress: fromAddress
-//     }
-// }
-
-// fn _packLockedSwap(lockedSwap: LockedSwap) -> (u64, u64, ContractAddress) {
-//     (lockedSwap.poolIndex, lockedSwap.until, lockedSwap.recipient)
-// }
-
-// fn _unpackLockedSwap(poolIndex: u64, until: u64, recipient: ContractAddress) -> LockedSwap {
-//     LockedSwap {
-//         poolIndex: poolIndex,
-//         until: until,
-//         recipient: recipient
-//     }
-// }
-
 fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
     let mut bytes = BytesTrait::new_empty();
     bytes.append_u256(encodedSwap);

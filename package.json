@@ -1,6 +1,17 @@
 {
+  "name": "meson-contracts-starknet",
+  "version": "1.0.0",
+  "description": "Meson contracts for Starknet",
+  "license": "MIT",
   "dependencies": {
     "dotenv": "^16.3.1",
+    "ethers": "^6.9.1",
     "starknet": "^5.19.5"
+  },
+  "scripts": {
+    "build": "scarb build",
+    "deploy": "./scripts/deploy.sh",
+    "initialize": "node ./scripts/initialize.js",
+    "swap": "node ./scripts/swap.js"
   }
 }
