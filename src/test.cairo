@@ -1,208 +1,33 @@
-// mod test_helpers;
-// mod test_htlc;
 
-// #[starknet::interface]
-// trait IGrandpa<TContractState> {
-//     fn set_grandpa(ref self: TContractState, grandpa: u64);
-//     fn get_grandpa(self: @TContractState) -> u64;
-// }
+#[cfg(test)]
+mod tests {
+    use starknet::get_block_timestamp;
+    use snforge_std::{ ContractClassTrait, declare, start_prank };
+    use meson_starknet::interface::MesonSwapTraitDispatcherTrait;
+    use meson_starknet::interface::MesonSwapTraitDispatcher;
+    use debug::PrintTrait;
 
-// #[starknet::interface]
-// trait IFather<TContractState> {
-//     fn set_father(ref self: TContractState, father: u64);
-//     fn get_father(self: @TContractState) -> u64;
-// }
+    #[test]
+    fn call_and_invoke() {
+        let admin = starknet::contract_address_const::<0xab>();
 
-// #[starknet::interface]
-// trait IUncle<TContractState> {
-//     fn set_uncle(ref self: TContractState, uncle: u64);
-//     fn get_uncle(self: @TContractState) -> u64;
-// }
+        let contract = declare('Meson');
+        let contract_address = contract.deploy(@array![admin.into()]).unwrap();
+        let dispatcher = MesonSwapTraitDispatcher { contract_address };
 
-// #[starknet::interface]
-// trait ISon<TContractState> {
-//     fn set_son(ref self: TContractState, son: u64);
-//     fn get_son(self: @TContractState) -> u64;
-// }
+        let timestamp = get_block_timestamp();
+        timestamp.print();
+        // assert(get_block_timestamp() == 1, 'time error!');
 
-// #[starknet::component]
-// mod GrandpaComponent {
-//     use super::IGrandpa;
+        // dispatcher.verifyEncodedSwap();
 
-//     #[storage]
-//     struct Storage {
-//         grandpa: u64
-//     }
+        // // Invoke another function to modify the storage state
+        // dispatcher.increase_balance(100);
 
-//     #[event]
-//     #[derive(Drop, starknet::Event)]
-//     enum Event {
-//         Transfer: Transfer,
-//     }
-
-//     #[derive(Drop, starknet::Event)]
-//     struct Transfer {}
-
-//     #[embeddable_as(GrandpaImpl)]
-//     impl Grandpa<
-//         TContractState, +HasComponent<TContractState>
-//     > of IGrandpa<ComponentState<TContractState>> {
-//         fn set_grandpa(ref self: ComponentState<TContractState>, grandpa: u64) {
-//             self.grandpa.write(grandpa);
-//         }
-
-//         fn get_grandpa(self: @ComponentState<TContractState>) -> u64 {
-//             self.grandpa.read()
-//         }
-        
-//     }
-// }
-
-// #[starknet::contract]
-// mod FatherContract {
-//     use super::IFather;
-
-//     component!(path: super::GrandpaComponent, storage: grandpaStore, event: grandpaEvent);
-
-//     #[storage]
-//     struct Storage {
-//         #[substorage(v0)]
-//         grandpaStore: super::GrandpaComponent::Storage,
-//     }
-
-//     #[event]
-//     #[derive(Drop, starknet::Event)]
-//     enum Event {
-//         #[flat]
-//         grandpaEvent: super::GrandpaComponent::Event
-//     }
-
-//     // #[external(v0)]
-//     // impl FatherImpl of super::IFather<ContractState> {
-//     //     fn set_father(ref self: ContractState, father: u64) {
-//     //         self.grandpaStore.grandpa.write(father);
-//     //     }
-
-//     //     fn get_father(self: @ContractState) -> u64 {
-//     //         self.grandpaStore.grandpa.read()
-//     //     }
-//     // }
-// }
-
-// // use FatherContract::StorageMemberAccessTrait;
-// // use FatherContract::StorageMapMemberAccessTrait;
-
-// // #[external(v0)]
-// // impl FatherImpl of IFather<FatherContract::ContractState> {
-// //     fn set_father(ref self: FatherContract::ContractState, father: u64) {
-// //         self.grandpaStore.grandpa.write(father);
-// //     }
-
-// //     fn get_father(self: @FatherContract::ContractState) -> u64 {
-// //         self.grandpaStore.grandpa.read()
-// //     }
-// // }
-
-// #[starknet::interface]
-// trait ISister<TContractState> {
-//     fn set_sister(ref self: TContractState, sister: u64);
-//     fn get_sister(self: @TContractState) -> u64;
-// }
-
-// #[starknet::contract]
-// mod SisterContract {
-//     #[storage]
-//     struct Storage {
-//         sister: u64
-//     }
-
-//     // #[abi(embed_v0)]
-//     // impl SisterImpl = super::SisterImpl;
-//     // impl SisterImpl = super::SisterImpl;
-
-//     // #[external(v0)]
-//     // impl SisterImpl = super::SisterImpl;
-//     // use super::SisterImpl;
+        // // Validate the transaction's effect
+        // let balance = dispatcher.get_balance();
+        // assert(balance == 100, 'balance == 100');
+    }
 
 
-//     // #[external(v0)]
-//     // #[generate_trait]
-//     // impl SisterImpl of SisterTrait {
-//     //     fn set_sister(ref self: ContractState, sister: u64) {
-//     //         self.sister.write(sister);
-//     //     }
-
-//     //     fn get_sister(self: @ContractState) -> u64 {
-//     //         self.sister.read()
-//     //     }
-//     // }
-    
-// }
-
-// use SisterContract::sisterContractMemberStateTrait;
-
-// #[external(v0)]
-// impl SisterImpl of ISister<SisterContract::ContractState> {
-//     fn set_sister(ref self: SisterContract::ContractState, sister: u64) {
-//         self.sister.write(sister);
-//     }
-
-//     fn get_sister(self: @SisterContract::ContractState) -> u64 {
-//         self.sister.read()
-//     }
-// }
-
-// // #[external(v0)]
-// // #[generate_trait]
-// // impl SisterImpl of SisterTrait {
-// //     fn set_sister(ref self: SisterContract::ContractState, sister: u64) {
-// //         self.sister.write(sister);
-// //     }
-
-// //     fn get_sister(self: @SisterContract::ContractState) -> u64 {
-// //         self.sister.read()
-// //     }
-// // }
-
-// // #[starknet::component]
-// // mod SisterImplComponent {
-// //     #[storage]
-// //     struct Storage {}
-
-// //     #[embeddable_as(SisterImpl)]
-// //     impl Sister<
-// //         TContractState, +HasComponent<TContractState>
-// //     > of super::ISister<TContractState> {
-// //         fn set_sister(ref self: TContractState, sister: u64) {
-// //             self.sister.write(sister);
-// //         }
-
-// //         fn get_sister(self: @TContractState) -> u64 {
-// //             self.sister.read()
-// //         }
-// //     }
-// // }
-
-
-
-// // mod SonContract {
-// //     use super::FatherContract;
-// //     use super::GrandpaComponent;
-
-// //     #[storage]
-// //     struct Storage {
-// //         son: u64
-// //     }
-
-// //     #[external(v0)]
-// //     #[generate_trait]
-// //     impl Private of PrivateTrait {
-// //         fn set_son_and_grandpa(
-// //             ref fatherStore: FatherContract::ContractState,
-// //             grandpa: u64
-// //         ) {
-// //             // fatherStore.grandpaStore.grandpa.write(grandpa);
-            
-// //         }
-// //     }
-// // }
+}

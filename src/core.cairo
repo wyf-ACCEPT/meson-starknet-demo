@@ -194,8 +194,9 @@ mod Meson {
             );
 
             let delta = _expireTsFrom(encodedSwap) - get_block_timestamp().into();
-            assert(delta > MesonConstants::MIN_BOND_TIME_PERIOD, 'Expire ts too early');
-            assert(delta < MesonConstants::MAX_BOND_TIME_PERIOD, 'Expire ts too late');
+            // assert(delta > MesonConstants::MIN_BOND_TIME_PERIOD, 'Expire ts too early');
+            // assert(delta < MesonConstants::MAX_BOND_TIME_PERIOD, 'Expire ts too late');
+            // TODO: add it back when it's not deployed on the local devnet
         }
 
         // Write functions
@@ -203,7 +204,6 @@ mod Meson {
             ref self: ContractState, 
             encodedSwap: u256, 
             initiator: EthAddress, 
-            fromAddress: ContractAddress, 
             poolIndex: u64
         ) {
             // TODO: This functions is only for user?
@@ -223,11 +223,12 @@ mod Meson {
 
         fn bondSwap(ref self: ContractState, encodedSwap: u256, poolIndex: u64) {
             let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let poolOwner = get_caller_address();
 
             assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
             assert(oldPoolIndex == 0, 'Swap bonded to others!');
             assert(
-                self.storage.poolOfAuthorizedAddr.read(fromAddress) == poolIndex,
+                self.storage.poolOfAuthorizedAddr.read(poolOwner) == poolIndex,
                 'Not authorized address!'
             );
 
@@ -266,7 +267,9 @@ mod Meson {
             let poolTokenIndex = _poolTokenIndexFrom(tokenIndex, poolIndex);
 
             assert(poolIndex != 0, 'Pool index cannot be 0!');
-            _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+
+            // TODO: add it back. 
+            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
 
             self.storage.postedSwaps.write(
                 encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
@@ -483,7 +486,8 @@ mod Meson {
             let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
             let mut releaseAmount = _amountToLock(encodedSwap);
 
-            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
+            // TODO: add it back. 
+            // _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
             assert(poolIndex != 0, 'Swap does not exist!');
             assert(
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 

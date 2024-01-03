@@ -41,7 +41,6 @@ trait MesonSwapTrait<TState> {
         ref self: TState, 
         encodedSwap: u256, 
         initiator: EthAddress, 
-        fromAddress: ContractAddress, 
         poolIndex: u64
     );
     fn bondSwap(ref self: TState, encodedSwap: u256, poolIndex: u64);

@@ -49,13 +49,13 @@ main = async function () {
   // mint tokens to Carol & David
   mockUsdc.connect(admin)
 
-  console.log('\n🚀 Transfer tokens to Carol...')
+  console.log('\n🚀  Transfer tokens to Carol...')
   await provider.waitForTransaction(
     (await mockUsdc.transfer(carol.address, parseUnits('45000', decimals))).transaction_hash
   )
   console.log('✅  Transaction done.')
 
-  console.log('\n🚀 Transfer tokens to David...')
+  console.log('\n🚀  Transfer tokens to David...')
   await provider.waitForTransaction(
     (await mockUsdc.transfer(david.address, parseUnits('45000', decimals))).transaction_hash
   )

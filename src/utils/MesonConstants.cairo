@@ -6,7 +6,7 @@ const MESON_PROTOCOL_VERSION: u8 = 1;
 // See https://github.com/satoshilabs/slips/blob/master/slip-0044.md
 const SHORT_COIN_TYPE: u16 = 0x232c;
 
-const MAX_SWAP_AMOUNT: u256 = 100_000_000_000_000; // 100,000.000000 = 100k
+const MAX_SWAP_AMOUNT: u256 = 100_000_000_000; // 100,000.000000 = 100k
 const SERVICE_FEE_RATE: u256 = 5; // service fee = 5 / 10000 = 0.05%
 const SERVICE_FEE_MINIMUM: u256 = 500_000; // min $0.5
 const SERVICE_FEE_MINIMUM_CORE: u256 = 500; // min 0.0005 ETH ~ $1
