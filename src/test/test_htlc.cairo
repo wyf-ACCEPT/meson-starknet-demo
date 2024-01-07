@@ -24,7 +24,7 @@
 // use starknet::contract_address_const;
 // use snforge_std::{ declare, ContractClassTrait };
 // use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-// use meson_starknet_demo::htlc::IHashTimeLockDispatcher;
+// use meson_starknet::htlc::IHashTimeLockDispatcher;
 
 // #[test]
 // fn test_journey() {

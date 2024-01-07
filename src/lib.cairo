@@ -1,6 +1,4 @@
-mod counter;
-mod crypto;
-mod htlc;
-mod token;
 mod utils;
-mod tests;
+mod test;
+mod interface;
+mod core;

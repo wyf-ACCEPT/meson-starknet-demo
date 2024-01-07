@@ -6,7 +6,7 @@ const MESON_PROTOCOL_VERSION: u8 = 1;
 // See https://github.com/satoshilabs/slips/blob/master/slip-0044.md
 const SHORT_COIN_TYPE: u16 = 0x232c;
 
-const MAX_SWAP_AMOUNT: u256 = 100_000_000_000_000; // 100,000.000000 = 100k
+const MAX_SWAP_AMOUNT: u256 = 100_000_000_000; // 100,000.000000 = 100k
 const SERVICE_FEE_RATE: u256 = 5; // service fee = 5 / 10000 = 0.05%
 const SERVICE_FEE_MINIMUM: u256 = 500_000; // min $0.5
 const SERVICE_FEE_MINIMUM_CORE: u256 = 500; // min 0.0005 ETH ~ $1
@@ -23,7 +23,7 @@ const TRON_SIGN_HEADER: felt252 = '\x19TRON Signed Message:\n32\n';     // lengt
 const TRON_SIGN_HEADER_33: felt252 = '\x19TRON Signed Message:\n33\n';  // length=25
 const TRON_SIGN_HEADER_53: felt252 = '\x19TRON Signed Message:\n53\n';  // length=25
 
-fn getEthSignHeaderBytes(is32: bool) -> Bytes {
+fn _getEthSignHeaderBytes(is32: bool) -> Bytes {
     let mut bytes = BytesTrait::new_empty();
     let header: u256 = (if is32 { ETH_SIGN_HEADER } else { ETH_SIGN_HEADER_52 }).into();
     bytes.append_u128_packed(header.high, 12);
@@ -31,7 +31,7 @@ fn getEthSignHeaderBytes(is32: bool) -> Bytes {
     bytes
 }
 
-fn getTronSignHeaderBytes(is32: bool, is33: bool) -> Bytes {
+fn _getTronSignHeaderBytes(is32: bool, is33: bool) -> Bytes {
     let mut bytes = BytesTrait::new_empty();
     let header: u256 = (if is32 { TRON_SIGN_HEADER } else 
         if is33 { TRON_SIGN_HEADER_33 } else { TRON_SIGN_HEADER_53 }).into();

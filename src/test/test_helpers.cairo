@@ -1,7 +1,7 @@
 use alexandria_bytes::bytes::BytesTrait;
 use debug::PrintTrait;
-use meson_starknet_demo::utils::MesonHelpers;
-use meson_starknet_demo::utils::MesonConstants;
+use meson_starknet::utils::MesonHelpers;
+use meson_starknet::utils::MesonConstants;
 
 // #[test]
 // #[available_gas(20000000)]
@@ -15,7 +15,7 @@ use meson_starknet_demo::utils::MesonConstants;
 // #[test]
 // #[available_gas(20000000)]
 // fn test_get_header() {
-//     let header1 = MesonConstants::getTronSignHeaderBytes(false, false);
+//     let header1 = MesonConstants::_getTronSignHeaderBytes(false, false);
 //     header1.size.print();
 //     let (_, data) = header1.read_u128_packed(0, 9);
 //     data.print();
