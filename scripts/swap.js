@@ -97,13 +97,13 @@ main = async function () {
   meson.connect(carol)
 
   /** For the first time */
-  // console.log('\n🚀  Register LP & Deposit token...')
-  // await provider.waitForTransaction(
-  //   (await meson.depositAndRegister(
-  //     parseUnits('12000', decimals), poolTokenIndex
-  //   )).transaction_hash
-  // )
-  // console.log('✅  Transaction done.')
+  console.log('\n🚀  Register LP & Deposit token...')
+  await provider.waitForTransaction(
+    (await meson.depositAndRegister(
+      parseUnits('12000', decimals), poolTokenIndex
+    )).transaction_hash
+  )
+  console.log('✅  Transaction done.')
 
   /** Directly deposit */
   // console.log('\n🚀  Deposit token...')

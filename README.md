@@ -12,173 +12,197 @@ Additionally, we're expanding our support to Non-EVM chains and actively develop
 
 ## Running the Demo
 
-### Setup environment
+### 1. Setup environment
 
 First, install `katana`, `scarb`, and `starkli`. See this link for guidance: [StarkNet Tooling](https://book.starknet.io/ch02-02-starkli-scarb-katana.html).
 
-Then, configure your `.env` file. Our example utilizes a local node (you can easily start a local network with `katana`), like this:
+Then, configure your `.env` file. Our example utilizes a local node (you can easily start a local network with `katana`). See `.env.example` for reference.
 
 ```dotenv
-STARKNET_ACCOUNT=katana-0
-STARKNET_RPC=http://0.0.0.0:5050
+export STARKNET_ACCOUNT=katana-0
+export STARKNET_RPC=http://0.0.0.0:5050
+
+PRIVATE_KEY_ADMIN=0x1800000000300000180000000000030000000000003006001800006600
+PRIVATE_KEY_CAROL=0x33003003001800009900180300d206308b0070db00121318d17b5e6262150b
+PRIVATE_KEY_DAVID=0x1c9053c053edf324aec366a34c6901b1095b07af69495bffec7d7fe21effb1b
+
+ADDRESS_ADMIN=0x517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
+ADDRESS_CAROL=0x5686a647a9cdd63ade617e0baf3b364856b813b508f03903eb58a7e622d5855
+ADDRESS_DAVID=0x765149d6bc63271df7b0316537888b81aa021523f9516a05306f10fd36914da
+
+MOCKUSDC_ADDRESS=
+MESON_ADDRESS=
+
+ETH_INITIATOR_PK=
+ETH_INITIATOR_ADDRESS=
 ```
 
-Then, initialize the variables by running the following commands. Replace the variable values if you're not using a local node. Otherwise, we suggest using these as-is.
+- The `PRIVATE_KEY_ADMIN`, `PRIVATE_KEY_CAROL`, `PRIVATE_KEY_DAVID`, `ADDRESS_ADMIN`, `ADDRESS_CAROL`, and `ADDRESS_DAVID` variables are pre-defined since it's only used in the local net. You can use them as-is or replace them with your own wallet.
+
+- The `STARKNET_ACCOUNT` and `STARKNET_RPC` variables are used to connect to the Starknet node. If you're using a local node, you can use them as-is. Otherwise, replace them with your own values.
+
+- The `MOCKUSDC_ADDRESS` and `MESON_ADDRESS` variables are used to connect to the Mock USDC contract and Meson contract. They will be filled in automatically when you deploy the contracts.
+
+- The `ETH_INITIATOR_PK` and `ETH_INITIATOR_ADDRESS` variables are used to connect to the Ethereum node. You should **replace them with your own wallet**.
+
+When you finished this, you should open another terminal. Start `katana`, and leave it running:
 
 ```bash
 source .env
-export admin=0x517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
-export carol=0x5686a647a9cdd63ade617e0baf3b364856b813b508f03903eb58a7e622d5855
-export david=0x765149d6bc63271df7b0316537888b81aa021523f9516a05306f10fd36914da
-export admin_account=katana-0
-export carol_account=katana-1
-export david_account=katana-2
-```
-
-Open another terminal, start `katana`, and leave it running:
-
-```bash
 katana
 ```
 
 <br>
 
-### Deploy the contracts
+### 2. Deploy the contracts
 
 Begin by compiling the Token contract, followed by its declaration and deployment.
 
 ```bash
-scarb build
-starkli declare ./target/dev/meson_starknet_MyUSDToken.contract_class.json
+# Compile the contract
+yarn build
 
 # ========================== Example Output ==========================
-# Declaring Cairo 1 class: 0x03fda322e44c0e24e5e99686104bdf5c330fc854c886cc8c624fe9a19c70f18d
-# Compiling Sierra class to CASM with compiler version 2.1.0...
-# CASM class hash: 0x0394e25b06ed6099babb0cf9cec66c58f46b27931cb637cdafa03311114f3376
-# Contract declaration transaction: 0x03a7ea28d008ac2d2329762361f32f9843ae1e2edfb7781ac9cd5d6783f871f8
-# Class hash declared:
-# 0x03fda322e44c0e24e5e99686104bdf5c330fc854c886cc8c624fe9a19c70f18d
+# yarn run v1.22.17
+# $ scarb build
+#    Compiling meson_starknet v0.1.0 (/Users/wangyifan/Desktop/Blockchain/Starknet/meson-starknet-contracts/Scarb.toml)
+#     Finished release target(s) in 11 seconds
+# ✨  Done in 10.67s.
 
-# Use the "class hash" value above
-starkli deploy <class_hash_value_token> $admin
+# Deploy the contract
+yarn deploy
 
 # ========================== Example Output ==========================
-# Deploying class 0x03fda322e44c0e24e5e99686104bdf5c330fc854c886cc8c624fe9a19c70f18d with salt 0x07125b5c763191d927e2a3646b8920fbd4257c40b2cbe0458e225336753317b9...
-# The contract will be deployed at address 0x06fcc44611637613344ae8280bd1e10b569cd8dd7a49c2d466e760d86b301a04
-# Contract deployment transaction: 0x05178f9e9b9a4417c0894e09ce6e13e06023ce766206890f73e91113d38e0420
+# yarn run v1.22.17
+# $ ./scripts/deploy.sh
+# Sierra compiler version not specified. Attempting to automatically decide version to use...
+# Unknown network. Falling back to the default compiler version 2.1.0. Use the --compiler-version flag to choose a different version.
+# Declaring Cairo 1 class: 0x058d753a72e93685085ea0bd496d3b6fa8066cf694f82ba9850548bb3cb61708
+# .....................
+# .....................
+# .....................
+# The contract will be deployed at address 0x0620b6c44dfb96db85637db28a25067ce2923d913d1161f5474d1233f2d19ccb
+# Contract deployment transaction: 0x0028b75b4ccd47617595d68d227bff22fb083b9ec9d92e575a2b010a1243de7d
 # Contract deployed:
-# 0x06fcc44611637613344ae8280bd1e10b569cd8dd7a49c2d466e760d86b301a04
-
-# Use the "contract deployed" value above
-export mytoken=<contract_address_token>
+# ✨  Done in 5.32s.
 ```
 
-Then compile, declare, and deploy the HTLC contract.
-
-```bash
-starkli declare ./target/dev/meson_starknet_HashTimeLock.contract_class.json
-# ... (the output)
-
-# Use the "class hash" value above
-starkli deploy <class_hash_value_htlc> $mytoken
-# ... (the output)
-
-# Use the "contract deployed" value above
-export htlc=<contract_address_htlc>
-```
-
-After deploying these contracts, you can start interacting with them. 
+After finish this scripts, the `MOCKUSDC_ADDRESS` and `MESON_ADDRESS` variables in `.env` will be filled in automatically.
 
 <br>
 
-### Transfer and Approve Tokens
+### 3. Initialize the contracts
 
-Initially, we pre-minted 1 billion tokens for the token contract's deployer (`admin`). Next, proceed to transfer tokens to Carol and David and then approve a certain transfer amount from HTLC's Sender (Carol) to the HTLC contract.
+In this scripts, we will initialize the Mock USDC contract and the Meson contract. We will firstly transfer some Mock USDC to Carol and David (two mock users), then approve the Meson contract to spend their Mock USDC. Finally, we will add the Mock USDC to the Meson contract's supported token list. See the example output log below for more details.
+
+Run the following commands to initialize the contracts:
 
 ```bash
-starkli call $mytoken symbol
-# Should be ["0x4d555344"], that's "MUSD"
+yarn initialize
 
-starkli call $mytoken name
-# Should be ["0x4d79555344546f6b656e"], that's "MyUSDToken"
+# ========================== Example Output ==========================
+# yarn run v1.22.17
+# $ node ./scripts/initialize.js
+# ✅  Mock USDC connected at  0x034e8ab9ad3eb86d22a5edfe8594cf769bba9b0abee768c2ef3ce873160eb56c
+#     Mock USDC decimals =  6n
+# ✅  Meson connected at  0x0620b6c44dfb96db85637db28a25067ce2923d913d1161f5474d1233f2d19ccb
+#     Meson's owner           ->  0x0517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
+#     Meson's premium manager ->  0x0517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
 
-starkli call $mytoken balance_of $admin
-# Should be ["0x33b2e3c9fd0803ce8000000", "0x0"], that's 1 billion token with 18 decimals (10^9 * 10*18)
+# 🚀  Transfer tokens to Carol...
+# ✅  Transaction done.
 
-export approve_amount=0xffffffffffffffffff
-export transfer_amount=0xffffffffffffffffff
-# That's ~4722.36 $MUSD
+# 🚀  Transfer tokens to David...
+# ✅  Transaction done.
 
-starkli invoke $mytoken transfer $carol u256:$transfer_amount
-starkli invoke $mytoken transfer $david u256:$transfer_amount
-starkli invoke --account $carol_account $mytoken approve $htlc u256:$approve_amount
+# ✅  Mock USDC balances:
+#     Admin =  999910000.0
+#     Carol =  45000.0
+#     David =  45000.0
 
-starkli call $mytoken allowance $carol $htlc
-# Should be ["0xffffffffffffffffff", "0x0"]
+# 🚀  Approve Meson to spend tokens...
+# ✅  Transaction done.
+# ✅  Transaction done.
 
-starkli call $mytoken balance_of $carol
-# Should be ["0xffffffffffffffffff", "0x0"]
+# ✅  Mock USDC allowances:
+#     Carol -> Meson =  45000.0
+#     David -> Meson =  45000.0
 
-starkli call $mytoken balance_of $david
-# Should be ["0xffffffffffffffffff", "0x0"]
+# 🚀  Add supported token...
+# ✅  Transaction done.
+
+# ✅  Supported token now: 
+#       token index 2  ->  0x034e8ab9ad3eb86d22a5edfe8594cf769bba9b0abee768c2ef3ce873160eb56c
+# ✨  Done in 52.31s.
 ```
 
 <br>
 
-### Interact with HTLC
+### 4. Interact with Meson
 
-Next, we embark on the user journey within the HTLC framework.
+Now, we can interact with the Meson contract. We will firstly deposit some Mock USDC to the Meson contract, then create an HTLC transfer from Carol to David. Finally, we will withdraw the Mock USDC from the Meson contract. See the Meson documentation for more details: [Meson Documentation](https://docs.meson.fi/).
 
-Imagine Carol sets a `secret`, known exclusively to her:
-
-`0100000c3500c0f000000000d19b03ec0000000a8c00655757b0e708ff0266ff`
-
-And calculates its **keccak256** hash:
-
-`c5ab957f679c2bb7b779af1990a319318fcb3db479af295da5625a797d90d908`
-
-Carol then locks some $MUSD in the contract with the hash, the transfer amount, and the receiver, David, claiming that "David can only withdraw this money before my set expiration time if he provides the original value (my `secret`) of this hash."
-
-To simulate Carol's operation:
+Run the following commands to interact with the Meson contract:
 
 ```bash
-export time_limit=300
-# That's 300 seconds
+yarn swap
 
-export lock_amount=0xffffffffffffffff
-# That's ~18.45 $MUSD
+# ========================== Example Output ==========================
+# yarn run v1.22.17
+# $ node ./scripts/swap.js
+# ✅  Mock USDC connected at  0x034e8ab9ad3eb86d22a5edfe8594cf769bba9b0abee768c2ef3ce873160eb56c
+#     Mock USDC decimals =  6n
+# ✅  Meson connected at  0x0620b6c44dfb96db85637db28a25067ce2923d913d1161f5474d1233f2d19ccb
+#     Meson's owner ->  0x0517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
+#     Meson's premium manager ->  0x0517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973
 
-starkli invoke $htlc --account $carol_account lock_asset 0x8fcb3db479af295da5625a797d90d908 0xc5ab957f679c2bb7b779af1990a31931 $time_limit u256:$lock_amount $david
-# Notice that we should separately input the "low part" and the "high part" of the hash value
+# ✅  Supported token now: 
+#       token index 2  ->  0x034e8ab9ad3eb86d22a5edfe8594cf769bba9b0abee768c2ef3ce873160eb56c
+
+# 🚀  Register LP & Deposit token...
+# ✅  Transaction done.
+
+# ✅  Mock USDC balances:
+#     Carol    =  33000.0
+#     Contract =  12015.0
+#     Carol (deposit in pool) =  12000.0
+
+# ✅  Initiator   : 0x952fD793D841D7C764012aCE5D7333cD95294A99
+# ✅  Encoded swap: 0x010000e4e1c0c00000000000e7552620000000000000659ad1d2232c02232c02
+# ✅  Swap ID     : 0xbdc5c07b8cd430d1b3bd72df0a21543ee0914c7d1c3a47be88fb46964d78373d
+
+# 🚀  Step 1.1 Post swap...
+# ✅  Transaction done.
+
+# 🚀  Step 1.2 Bond swap...
+# ✅  Transaction done.
+# ✅  Posted swap on 0x010000e4e1c0c00000000000e7552620000000000000659ad1d2232c02232c02: 
+#       pool index  : 5
+#       initiator   : 0x952fd793d841d7c764012ace5d7333cd95294a99
+#       from address: 0x0765149d6bc63271df7b0316537888b81aa021523f9516a05306f10fd36914da
+
+# 🚀  Step 2. Lock swap...
+# ✅  Transaction done.
+# ✅  Locked swap on 0x010000e4e1c0c00000000000e7552620000000000000659ad1d2232c02232c02 + 0x952fd793d841d7c764012ace5d7333cd95294a99: 
+#       pool index  : 5
+#       until       : 1704642095
+#       recipient   : 0x0765149d6bc63271df7b0316537888b81aa021523f9516a05306f10fd36914da
+
+# 🚀  Step 3. Release...
+# ✅  Transaction done.
+# ✅  Locked swap on 0x010000e4e1c0c00000000000e7552620000000000000659ad1d2232c02232c02 + 0x952fd793d841d7c764012ace5d7333cd95294a99: 
+#       pool index  : 0
+#       until       : 0
+#       recipient   : 0x0620b6c44dfb96db85637db28a25067ce2923d913d1161f5474d1233f2d19ccb
+
+# 🚀  Step 4. Execute swap...
+# ✅  Transaction done.
+# ✅  Posted swap on 0x010000e4e1c0c00000000000e7552620000000000000659ad1d2232c02232c02: 
+#       pool index  : 0
+#       initiator   : 0x00
+#       from address: 0x00
+
+# ✨  Done in 61.94s.
 ```
 
-Subsequently, anyone can access the current locked asset information by using this hash:
-
-```bash
-starkli call $htlc view_current_locked_assets 0x8fcb3db479af295da5625a797d90d908 0xc5ab957f679c2bb7b779af1990a31931
-# [
-#     "0xffffffffffffffff",  # The locked assets' amount (u256 type)
-#     "0x00",                # The "high part" of the amount
-#     "0x655c5cd1",          # The expire timestamp
-#     "0x0765149d6bc63271df7b0316537888b81aa021523f9516a05306f10fd36914da"
-#                            # The expected receiver's address (David)
-# ]
-```
-
-In a practical scenario, Carol would disclose her Secret to David, enabling him to withdraw the assets:
-
-```bash
-starkli invoke $htlc --account $david_account claim_asset 0x0000000a8c00655757b0e708ff0266ff 0x0100000c3500c0f000000000d19b03ec
-```
-
-Compare Carol and David's asset balances before and after to see the changes:
-
-```bash
-starkli call $mytoken balance_of $carol
-# Should be ["0xff0000000000000000", "0x0"]
-
-starkli call $mytoken balance_of $david
-# Should be ["0x0100fffffffffffffffe", "0x0"]
-```
-
-Congratulations, you have completed an HTLC transfer!
+Congratulations, you have completed a Meson swap!
