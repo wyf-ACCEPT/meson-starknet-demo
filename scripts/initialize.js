@@ -5,7 +5,7 @@ require('dotenv').config()
 
 main = async function () {
   // initialize provider & account
-  const provider = new RpcProvider({ nodeUrl: "http://127.0.0.1:5050/rpc" })
+  const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_TESTNET })
   const admin = new Account(provider, process.env.ADDRESS_ADMIN, process.env.PRIVATE_KEY_ADMIN)
   const carol = new Account(provider, process.env.ADDRESS_CAROL, process.env.PRIVATE_KEY_CAROL)
   const david = new Account(provider, process.env.ADDRESS_DAVID, process.env.PRIVATE_KEY_DAVID)
@@ -48,11 +48,13 @@ main = async function () {
 
   // mint tokens to Carol & David
   mockUsdc.connect(admin)
+    
+  console.log(formatUnits((await mockUsdc.balanceOf(admin.address)).toString(), decimals))
+  console.log(formatUnits((await mockUsdc.balanceOf(carol.address)).toString(), decimals))
 
   console.log('\n🚀  Transfer tokens to Carol...')
-  await provider.waitForTransaction(
-    (await mockUsdc.transfer(carol.address, parseUnits('45000', decimals))).transaction_hash
-  )
+  let submit = await mockUsdc.transfer(carol.address, parseUnits('45000', decimals))
+  await provider.waitForTransaction(submit.transaction_hash)
   console.log('✅  Transaction done.')
 
   console.log('\n🚀  Transfer tokens to David...')
@@ -78,18 +80,18 @@ main = async function () {
   )
 
 
-  // approve meson to spend tokens
-  console.log('\n🚀  Approve Meson to spend tokens...')
-  mockUsdc.connect(carol)
-  await provider.waitForTransaction(
-    (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
-  )
-  console.log('✅  Transaction done.')
-  mockUsdc.connect(david)
-  await provider.waitForTransaction(
-    (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
-  )
-  console.log('✅  Transaction done.')
+  // // approve meson to spend tokens
+  // console.log('\n🚀  Approve Meson to spend tokens...')
+  // mockUsdc.connect(carol)
+  // await provider.waitForTransaction(
+  //   (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
+  // )
+  // console.log('✅  Transaction done.')
+  // mockUsdc.connect(david)
+  // await provider.waitForTransaction(
+  //   (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
+  // )
+  // console.log('✅  Transaction done.')
 
 
   // log allowances
