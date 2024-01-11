@@ -53,7 +53,7 @@ function signRelease(encodedHex, initiator, recipient) {
 
 main = async function () {
   // initialize provider & account
-  const provider = new RpcProvider({ nodeUrl: "http://127.0.0.1:5050/rpc" })
+  const provider = new RpcProvider({ nodeUrl: process.env.STARKNET_TESTNET })
   const admin = new Account(provider, process.env.ADDRESS_ADMIN, process.env.PRIVATE_KEY_ADMIN)
   const carol = new Account(provider, process.env.ADDRESS_CAROL, process.env.PRIVATE_KEY_CAROL)
   const david = new Account(provider, process.env.ADDRESS_DAVID, process.env.PRIVATE_KEY_DAVID)

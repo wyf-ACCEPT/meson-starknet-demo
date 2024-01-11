@@ -49,9 +49,6 @@ main = async function () {
   // mint tokens to Carol & David
   mockUsdc.connect(admin)
     
-  console.log(formatUnits((await mockUsdc.balanceOf(admin.address)).toString(), decimals))
-  console.log(formatUnits((await mockUsdc.balanceOf(carol.address)).toString(), decimals))
-
   console.log('\n🚀  Transfer tokens to Carol...')
   let submit = await mockUsdc.transfer(carol.address, parseUnits('45000', decimals))
   await provider.waitForTransaction(submit.transaction_hash)
@@ -62,7 +59,6 @@ main = async function () {
     (await mockUsdc.transfer(david.address, parseUnits('45000', decimals))).transaction_hash
   )
   console.log('✅  Transaction done.')
-
 
   // log balances
   console.log('\n✅  Mock USDC balances:')
@@ -80,18 +76,18 @@ main = async function () {
   )
 
 
-  // // approve meson to spend tokens
-  // console.log('\n🚀  Approve Meson to spend tokens...')
-  // mockUsdc.connect(carol)
-  // await provider.waitForTransaction(
-  //   (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
-  // )
-  // console.log('✅  Transaction done.')
-  // mockUsdc.connect(david)
-  // await provider.waitForTransaction(
-  //   (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
-  // )
-  // console.log('✅  Transaction done.')
+  // approve meson to spend tokens
+  console.log('\n🚀  Approve Meson to spend tokens...')
+  mockUsdc.connect(carol)
+  await provider.waitForTransaction(
+    (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
+  )
+  console.log('✅  Transaction done.')
+  mockUsdc.connect(david)
+  await provider.waitForTransaction(
+    (await mockUsdc.approve(mesonAddress, parseUnits('45000', decimals))).transaction_hash
+  )
+  console.log('✅  Transaction done.')
 
 
   // log allowances

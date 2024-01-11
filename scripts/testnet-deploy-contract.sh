@@ -2,6 +2,10 @@
 
 # See https://book.starkli.rs/signers and https://book.starkli.rs/accounts for more.
 
+# Use https://goerli.starkgate.starknet.io/ to bridge Goerli ETH.
+
+# Use the guidance in https://www.starknetjs.com/docs/guides/create_account to create a starknet account. Don't use `starkli signer gen-keypair`, and don't create a wallet in Argent wallet. It's 3 diffrent things, and they're not compatible with each other!!! 🤬🤬🤬
+
 STARKNET_KEYSTORE=./account/keystore.json
 ACCOUNT_ADMIN_KEYSTORE=./account/testnet_admin.json
 STARKNET_TESTNET=https://starknet-goerli.g.alchemy.com/v2/JDkRaXE932elAFfLGl3IzE7jP0aekgAM
@@ -30,7 +34,7 @@ MESON_CLASS=$(starkli declare --account $ACCOUNT_ADMIN_KEYSTORE --keystore $STAR
 # -> 0x07c1c0acaac0837b66865f991d0dc6d553652503862614d17aa02e923ba4c681
 
 MESON_ADDRESS=$(starkli deploy --account $ACCOUNT_ADMIN_KEYSTORE --keystore $STARKNET_KEYSTORE --rpc $STARKNET_TESTNET $MESON_CLASS $ADDRESS_ADMIN | tail -n 1)
-# -> 0x0516216944ab0b8d557d999eba98110f5f8dbe7a886c80f918d00b02fe9f433a
+# -> 0x030eb41a672017cac279ed71706794b3ea30aee4a20580f117a9d856dd0b03ff
 
 # We found that the `keystore` typed account can't be loaded in the JavaScript SDK, so we use the `privateKey` typed account instead.
 
