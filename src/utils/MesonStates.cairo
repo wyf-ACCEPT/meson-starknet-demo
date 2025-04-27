@@ -4,7 +4,8 @@ use starknet::ContractAddress;
 mod MesonStatesComponent {
     use starknet::{
         ContractAddress, EthAddress, get_contract_address,
-        contract_address::ContractAddressZeroable
+        contract_address::ContractAddressZeroable,
+        storage::Map,
     };
     use openzeppelin::token::erc20::interface::{
         IERC20Dispatcher, IERC20DispatcherTrait
@@ -17,17 +18,17 @@ mod MesonStatesComponent {
     struct Storage {
         owner: ContractAddress,
         premiumManager: ContractAddress,
-        balanceOfPoolToken: LegacyMap<u64, u256>,
-        ownerOfPool: LegacyMap<u64, ContractAddress>,
-        poolOfAuthorizedAddr: LegacyMap<ContractAddress, u64>,
-        indexOfToken: LegacyMap<ContractAddress, u8>,
-        tokenForIndex: LegacyMap<u8, ContractAddress>,
-        postedSwaps: LegacyMap<
+        balanceOfPoolToken: Map<u64, u256>,
+        ownerOfPool: Map<u64, ContractAddress>,
+        poolOfAuthorizedAddr: Map<ContractAddress, u64>,
+        indexOfToken: Map<ContractAddress, u8>,
+        tokenForIndex: Map<u8, ContractAddress>,
+        postedSwaps: Map<
             u256, (u64, EthAddress, ContractAddress)
-        >,  // Customized struct cannot be used as the value of LegacyMap
-        lockedSwaps: LegacyMap<
+        >,  // Customized struct cannot be used as the value of Map
+        lockedSwaps: Map<
             u256, (u64, u64, ContractAddress)
-        >,  // Customized struct cannot be used as the value of LegacyMap
+        >,  // Customized struct cannot be used as the value of Map
     }
 
     #[event]
@@ -79,12 +80,13 @@ mod MesonStatesComponent {
                 let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
                 assert(token != ContractAddressZeroable::zero(), 'Token not supported');
 
+                let mut adjustedAmount = amount;
                 if _needAdjustAmount(tokenIndex) {
-                    let amount = amount * 1_000000_000000;
+                    adjustedAmount = amount * 1_000000_000000;
                 }
 
                 IERC20Dispatcher { contract_address: token }.transfer_from(
-                    sender, get_contract_address(), amount
+                    sender, get_contract_address(), adjustedAmount
                 );
             }
         }
@@ -102,12 +104,13 @@ mod MesonStatesComponent {
                 // Stablecoins
                 let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
 
+                let mut adjustedAmount = amount;
                 if _needAdjustAmount(tokenIndex) {
-                    let amount = amount * 1_000000_000000;
+                    adjustedAmount = amount * 1_000000_000000;
                 }
 
                 IERC20Dispatcher { contract_address: token }.transfer(
-                    recipient, amount
+                    recipient, adjustedAmount
                 );
             }
         }

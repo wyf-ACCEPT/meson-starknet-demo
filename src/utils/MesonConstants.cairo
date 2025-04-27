@@ -13,9 +13,9 @@ const SERVICE_FEE_MINIMUM_CORE: u256 = 500; // min 0.0005 ETH ~ $1
 
 const CORE_TOKEN_PRICE_FACTOR: u256 = 10;
 
-const MIN_BOND_TIME_PERIOD: u256 = consteval_int!(1 * 60 * 60); // 1 hours
-const MAX_BOND_TIME_PERIOD: u256 = consteval_int!(2 * 60 * 60); // 2 hours
-const LOCK_TIME_PERIOD: u256 = consteval_int!(40 * 60); // 40 minutes
+const MIN_BOND_TIME_PERIOD: u256 = 1 * 60 * 60; // 1 hours
+const MAX_BOND_TIME_PERIOD: u256 = 2 * 60 * 60; // 2 hours
+const LOCK_TIME_PERIOD: u256 = 40 * 60; // 40 minutes
 
 const ETH_SIGN_HEADER: felt252= '\x19Ethereum Signed Message:\n32';     // length=28
 const ETH_SIGN_HEADER_52: felt252 = '\x19Ethereum Signed Message:\n52'; // length=28

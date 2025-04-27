@@ -194,9 +194,8 @@ mod Meson {
             );
 
             let delta = _expireTsFrom(encodedSwap) - get_block_timestamp().into();
-            // assert(delta > MesonConstants::MIN_BOND_TIME_PERIOD, 'Expire ts too early');
-            // assert(delta < MesonConstants::MAX_BOND_TIME_PERIOD, 'Expire ts too late');
-            // TODO: add it back when it's not deployed on the local devnet
+            assert(delta > MesonConstants::MIN_BOND_TIME_PERIOD, 'Expire ts too early');
+            assert(delta < MesonConstants::MAX_BOND_TIME_PERIOD, 'Expire ts too late');
         }
 
         // Write functions
@@ -238,7 +237,7 @@ mod Meson {
         }
 
         fn cancelSwap(ref self: ContractState, encodedSwap: u256) {
-            let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let (_oldPoolIndex, _initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             let tokenIndex = _inTokenIndexFrom(encodedSwap);
             
             assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
@@ -261,15 +260,14 @@ mod Meson {
             recipient: EthAddress, 
             depositToPool: bool
         ) {
-            let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let (poolIndex, initiator, _fromAddress) = self.getPostedSwap(encodedSwap);
             let amount = _amountFrom(encodedSwap);
             let tokenIndex = _inTokenIndexFrom(encodedSwap);
             let poolTokenIndex = _poolTokenIndexFrom(tokenIndex, poolIndex);
 
             assert(poolIndex != 0, 'Pool index cannot be 0!');
 
-            // TODO: add it back. 
-            // _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+            _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
 
             self.storage.postedSwaps.write(
                 encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
@@ -452,7 +450,7 @@ mod Meson {
 
         fn unlock(ref self: ContractState, encodedSwap: u256, initiator: EthAddress) {
             let swapId = _getSwapId(encodedSwap, initiator);
-            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let (poolIndex, until, _recipient) = self.getLockedSwap(swapId);
             let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
             let coreAmount = _coreTokenAmount(encodedSwap);
 
@@ -480,14 +478,13 @@ mod Meson {
         ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
-            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let (poolIndex, _until, recipient) = self.getLockedSwap(swapId);
             let coreAmount = _coreTokenAmount(encodedSwap);
             let recipientAsEth = _ethAddressFromStarknet(recipient);
             let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
             let mut releaseAmount = _amountToLock(encodedSwap);
 
-            // TODO: add it back. 
-            // _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
+            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
             assert(poolIndex != 0, 'Swap does not exist!');
             assert(
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
@@ -511,7 +508,6 @@ mod Meson {
             if coreAmount > 0 {
                 // TODO
             }
-            // TODO: _callSkaleFaucet?
             self.storage._safeTransfer(
                 _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
@@ -541,7 +537,7 @@ mod Meson {
 
             self.forTargetChain(encodedSwap);
             _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
-            // assert(poolIndex != 0, 'Swap does not exist!');
+            assert(poolIndex != 0, 'Swap does not exist!');
             assert(existPoolIndex == 0, 'Swap already exists');
             assert(poolIndex != 0, 'Caller not registered!');
             assert(
@@ -566,7 +562,6 @@ mod Meson {
             if coreAmount > 0 {
                 // TODO
             }
-            // TODO: _callSkaleFaucet?
             self.storage._safeTransfer(
                 _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );

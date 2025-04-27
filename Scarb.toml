@@ -1,15 +1,16 @@
 [package]
 name = "meson_starknet"
 version = "0.1.0"
+edition = "2024_07"
 
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-alexandria_math = { git = "https://github.com/keep-starknet-strange/alexandria" }
-alexandria_bytes = { git = "https://github.com/keep-starknet-strange/alexandria" }
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry" }
-starknet = ">=2.3.1"
-openzeppelin = { git = "https://github.com/openzeppelin/cairo-contracts" }
+starknet = ">=2.5"
+openzeppelin = "1.0.0"
+# alexandria_math = { git = "https://github.com/keep-starknet-strange/alexandria" }
+# alexandria_bytes = { git = "https://github.com/keep-starknet-strange/alexandria" }
+# snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry" }
 
 [[target.starknet-contract]]
 casm = true
