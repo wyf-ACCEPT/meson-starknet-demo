@@ -1,11 +1,12 @@
-use starknet::ContractAddress;
-
 #[starknet::component]
 mod MesonStatesComponent {
+    use core::num::traits::Zero;
     use starknet::{
         ContractAddress, EthAddress, get_contract_address,
-        contract_address::ContractAddressZeroable,
-        storage::Map,
+        storage::{
+            StoragePointerWriteAccess, Map, 
+            StorageMapReadAccess, StorageMapWriteAccess,
+        },
     };
     use openzeppelin::token::erc20::interface::{
         IERC20Dispatcher, IERC20DispatcherTrait
@@ -29,12 +30,6 @@ mod MesonStatesComponent {
         lockedSwaps: Map<
             u256, (u64, u64, ContractAddress)
         >,  // Customized struct cannot be used as the value of Map
-    }
-
-    #[event]
-    #[derive(Drop, starknet::Event)]
-    enum Event {
-        // TODO: add events
     }
 
     #[generate_trait]       // Internal functions that can be used in son contracts
@@ -78,7 +73,7 @@ mod MesonStatesComponent {
             } else {
                 // Stablecoins
                 let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
-                assert(token != ContractAddressZeroable::zero(), 'Token not supported');
+                assert(token.is_non_zero(), 'Token not supported');
 
                 let mut adjustedAmount = amount;
                 if _needAdjustAmount(tokenIndex) {
@@ -121,12 +116,9 @@ mod MesonStatesComponent {
             index: u8
         ) {
             assert(index != 0, 'Cannot use 0 as token index');
-            assert(token != ContractAddressZeroable::zero(), 'Cannot use zero address');
+            assert(token.is_non_zero(), 'Cannot use zero address');
             assert(self.indexOfToken.read(token) == 0, 'Token has been added before');
-            assert(
-                self.tokenForIndex.read(index) == ContractAddressZeroable::zero(), 
-                'Index has been used'
-            );
+            assert(self.tokenForIndex.read(index).is_zero(), 'Index has been used');
             if _isCoreToken(index) {
                 // TODO: how to check this
                 //     assert(
@@ -144,9 +136,10 @@ mod MesonStatesComponent {
         ) {
             assert(index != 0, 'Cannot use 0 as token index');
             let token: ContractAddress = self.tokenForIndex.read(index);
-            assert(token != ContractAddressZeroable::zero(), 'Token for this index not exist');
+            assert(token.is_non_zero(), 'Token for this index not exist');
             self.indexOfToken.write(token, 0);
-            self.tokenForIndex.write(index, ContractAddressZeroable::zero());
+            let zero_address: ContractAddress = 0_felt252.try_into().unwrap();
+            self.tokenForIndex.write(index, zero_address);
         }
 
         // _transferToContract: Don't need to write this function
@@ -155,10 +148,7 @@ mod MesonStatesComponent {
             ref self: ComponentState<TContractState>,
             newOwner: ContractAddress
         ) {
-            assert(
-                newOwner != ContractAddressZeroable::zero(), 
-                'New owner cannot be zero!'
-            );
+            assert(newOwner.is_non_zero(), 'New owner cannot be zero!');
             self.owner.write(newOwner);
         }
 
@@ -166,10 +156,7 @@ mod MesonStatesComponent {
             ref self: ComponentState<TContractState>,
             newPremiumManager: ContractAddress
         ) {
-            assert(
-                newPremiumManager != ContractAddressZeroable::zero(), 
-                'New manager cannot be zero!'
-            );
+            assert(newPremiumManager.is_non_zero(), 'New manager cannot be zero!');
             self.premiumManager.write(newPremiumManager);
         }
     }

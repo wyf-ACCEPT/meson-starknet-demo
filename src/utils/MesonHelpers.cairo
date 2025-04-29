@@ -1,11 +1,16 @@
-// This file contains the functions that don't need to change or view any state.
-use core::traits::TryInto;
-use core::option::OptionTrait;
-use starknet::{ContractAddress, EthAddress};
-use super::MesonConstants;
+use core::{
+    num::traits::Zero,
+    option::OptionTrait,
+    traits::TryInto,
+    keccak::compute_keccak_byte_array,
+};
+use starknet::{
+    ContractAddress, EthAddress,
+    eth_signature::verify_eth_signature,
+    secp256_trait::signature_from_vrs,
+};
 use alexandria_bytes::{Bytes, BytesTrait};
-use starknet::verify_eth_signature;
-use starknet::secp256_trait::signature_from_vrs;
+use super::MesonConstants;
 
 // Note that there's no `<<` or `>>` operator in cairo.
 const POW_2_255: u256 = 0x8000000000000000000000000000000000000000000000000000000000000000;
@@ -39,25 +44,14 @@ enum MesonErrors {
     InvalidSignature,
 }
 
-// struct PostedSwap {
-//     poolIndex: u64,
-//     initiator: EthAddress,
-//     fromAddress: ContractAddress
-// }
-
-// struct LockedSwap {
-//     poolIndex: u64,
-//     until: u64,
-//     recipient: ContractAddress
-// }
-
 fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
     let mut bytes = BytesTrait::new_empty();
     bytes.append_u256(encodedSwap);
-    let initiator_u256: u256 = initiator.address.into();
+    let initiator_felt252: felt252 = initiator.into();
+    let initiator_u256: u256 = initiator_felt252.into();
     bytes.append_u128_packed(initiator_u256.high, 4);
     bytes.append_u128(initiator_u256.low);
-    bytes.keccak()
+    compute_keccak_byte_array(@bytes.into())
 }
 
 fn _versionFrom(encodedSwap: u256) -> u8 {
@@ -106,7 +100,7 @@ fn _signNonTyped(encodedSwap: u256) -> bool {
     (encodedSwap & 0x0800000000000000000000000000000000000000000000000000) > 0
 }
 
-fn _isCoreToken(tokenIndex: u8) -> bool {
+pub fn _isCoreToken(tokenIndex: u8) -> bool {
     (tokenIndex == 52) || ((tokenIndex > 190) && ((tokenIndex % 4) == 3))
 }
 
@@ -133,7 +127,7 @@ fn _coreTokenAmount(encodedSwap: u256) -> u256 {
     }
 }
 
-fn _needAdjustAmount(tokenIndex: u8) -> bool {
+pub fn _needAdjustAmount(tokenIndex: u8) -> bool {
     tokenIndex > 32
 }
 
@@ -194,7 +188,7 @@ fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u64 {   // o
 //     (lockedSwap.into() / POW_2_40).into()
 // }
 
-fn _poolTokenIndexFrom(tokenIndex: u8, poolIndex: u64) -> u64 {     // original (uint8, uint40) -> uint48
+pub fn _poolTokenIndexFrom(tokenIndex: u8, poolIndex: u64) -> u64 {     // original (uint8, uint40) -> uint48
     (tokenIndex.into() * POW_2_40).try_into().unwrap() | poolIndex
 }
 
@@ -221,19 +215,21 @@ fn _checkRequestSignature(
     let nonTyped = _signNonTyped(encodedSwap);
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes = MesonConstants::_getTronSignHeaderBytes(
+        let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
             is32: if nonTyped { false } else { true }, is33: true,
-        );
+        ).into();
         bytes.append_u256(encodedSwap);
         bytes
     } else if nonTyped {
-        let mut bytes = MesonConstants::_getEthSignHeaderBytes(is32: true);
+        let mut bytes: Bytes = MesonConstants::_getEthSignHeaderBytes(
+            is32: true
+        ).into();
         bytes.append_u256(encodedSwap);
         bytes
     } else {
         let mut msgHashBytes = BytesTrait::new_empty();
         msgHashBytes.append_u256(encodedSwap);
-        let msgHash = msgHashBytes.keccak();
+        let msgHash = compute_keccak_byte_array(@msgHashBytes.into());
         let bytes = BytesTrait::new(64, array![
             MesonConstants::REQUEST_TYPE_HASH.high,
             MesonConstants::REQUEST_TYPE_HASH.low,
@@ -243,7 +239,7 @@ fn _checkRequestSignature(
         bytes
     };
 
-    let digest = signingData.keccak();
+    let digest = compute_keccak_byte_array(@signingData.into());
     _checkSignature(digest, r, yParityAndS, signer);
 }
 
@@ -255,30 +251,31 @@ fn _checkReleaseSignature(
     signer: EthAddress,
 ) {
     let nonTyped = _signNonTyped(encodedSwap);
+    let recipient_felt252: felt252 = recipient.into();
+    let recipient_u256: u256 = recipient_felt252.into();
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes = MesonConstants::_getTronSignHeaderBytes(
+        let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
             is32: if nonTyped { false } else { true }, is33: false,
-        );
+        ).into();
         bytes.append_u256(encodedSwap);
-        let recipient_u256: u256 = recipient.address.into();
         bytes.append_u128_packed(recipient_u256.high, 4);
         bytes.append_u128(recipient_u256.low);
         bytes
     } else if nonTyped {
-        let mut bytes = MesonConstants::_getEthSignHeaderBytes(is32: false);
+        let mut bytes: Bytes = MesonConstants::_getEthSignHeaderBytes(
+            is32: false
+        ).into();
         bytes.append_u256(encodedSwap);
-        let recipient_u256: u256 = recipient.address.into();
         bytes.append_u128_packed(recipient_u256.high, 4);
         bytes.append_u128(recipient_u256.low);
         bytes
     } else {
         let mut msgHashBytes = BytesTrait::new_empty();
         msgHashBytes.append_u256(encodedSwap);
-        let recipient_u256: u256 = recipient.address.into();
         msgHashBytes.append_u128_packed(recipient_u256.high, 4);
         msgHashBytes.append_u128(recipient_u256.low);
-        let msgHash = msgHashBytes.keccak();
+        let msgHash = compute_keccak_byte_array(@msgHashBytes.into());
         let typeHash = if _outChainFrom(encodedSwap) == 0x00c3 {
             MesonConstants::RELEASE_TO_TRON_TYPE_HASH
         } else {
@@ -291,7 +288,7 @@ fn _checkReleaseSignature(
         bytes
     };
 
-    let digest = signingData.keccak();
+    let digest = compute_keccak_byte_array(@signingData.into());
     _checkSignature(digest, r, yParityAndS, signer);
 }
 
@@ -299,7 +296,7 @@ fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress)
     let s = yParityAndS & 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let v: u32 = (yParityAndS / POW_2_255).try_into().unwrap() + 27;
 
-    assert(signer.address != 0, 'Signer cannot be zero!');
+    assert(signer.is_non_zero(), 'Signer cannot be zero!');
     assert(
         s <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
         'Invalid signature!'    
