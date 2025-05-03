@@ -1,7 +1,7 @@
 use starknet::{ContractAddress, EthAddress};
 
 #[starknet::interface]
-trait MesonViewStorageTrait<TState> {
+pub trait MesonViewStorageTrait<TState> {
     // View functions
     fn getOwner(self: @TState) -> ContractAddress;
     fn getPremiumManager(self: @TState) -> ContractAddress;
@@ -15,7 +15,7 @@ trait MesonViewStorageTrait<TState> {
 }
 
 #[starknet::interface]
-trait MesonManagerTrait<TState> {
+pub trait MesonManagerTrait<TState> {
     // View functions
     fn getSupportedTokens(self: @TState) -> (Array<ContractAddress>, Array<u8>);
 
@@ -32,7 +32,7 @@ trait MesonManagerTrait<TState> {
 }
 
 #[starknet::interface]
-trait MesonSwapTrait<TState> {
+pub trait MesonSwapTrait<TState> {
     // Modifier
     fn verifyEncodedSwap(self: @TState, encodedSwap: u256);     // Need assert inside
 
@@ -56,7 +56,7 @@ trait MesonSwapTrait<TState> {
 }
 
 #[starknet::interface]
-trait MesonPoolsTrait<TState> {
+pub trait MesonPoolsTrait<TState> {
     // Modifier
     fn forTargetChain(self: @TState, encodedSwap: u256);     // Need assert inside
 

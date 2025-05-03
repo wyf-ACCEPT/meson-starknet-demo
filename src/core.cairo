@@ -1,22 +1,29 @@
 #[starknet::contract]
 mod Meson {
+    use core::num::traits::Zero;
     use starknet::{
         EthAddress, ContractAddress,
-        contract_address::ContractAddressZeroable,
-        eth_address::EthAddressZeroable,
+        // contract_address::ContractAddressZeroable,
+        // eth_address::EthAddressZeroable,
         get_caller_address, get_block_timestamp, get_contract_address,
+        storage::{
+            StoragePointerWriteAccess, StoragePointerReadAccess,
+            StorageMapReadAccess, StorageMapWriteAccess,
+        },
     };
     use meson_starknet::interface::{
         MesonViewStorageTrait, MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
     };
-    use meson_starknet::utils::MesonConstants;
+    use meson_starknet::utils::{
+        MesonConstants,
+        MesonStates::MesonStatesComponent,
+    };
     use meson_starknet::utils::MesonHelpers::{
         _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom, _outChainFrom,
         _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
         _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
         _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
     };
-    use meson_starknet::utils::MesonStates::MesonStatesComponent;
     
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
 
@@ -97,7 +104,7 @@ mod Meson {
             let mut i = 1;
             loop {
                 let token = self.storage.tokenForIndex.read(i);
-                if token != ContractAddressZeroable::zero() {
+                if token.is_non_zero() {
                     tokens.append(token);
                     tokenIndexes.append(i);
                 }
@@ -150,7 +157,7 @@ mod Meson {
         ) {
             self.onlyOwner();
             assert(
-                self.storage.ownerOfPool.read(toPoolIndex) != ContractAddressZeroable::zero(),
+                self.storage.ownerOfPool.read(toPoolIndex).is_non_zero(),
                 'Pool index not registered'
             );
             let poolFrom = _poolTokenIndexFrom(tokenIndex, 0);
@@ -182,9 +189,7 @@ mod Meson {
 
             let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             assert(
-                poolIndex == 0 && 
-                initiator == EthAddressZeroable::zero() && 
-                fromAddress == ContractAddressZeroable::zero(), 
+                poolIndex == 0 && initiator.is_zero() &&  fromAddress.is_zero(), 
                 'Swap already exists'
             );
 
@@ -224,7 +229,7 @@ mod Meson {
             let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             let poolOwner = get_caller_address();
 
-            assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
+            assert(fromAddress.is_non_zero(), 'Swap not exists!');
             assert(oldPoolIndex == 0, 'Swap bonded to others!');
             assert(
                 self.storage.poolOfAuthorizedAddr.read(poolOwner) == poolIndex,
@@ -240,14 +245,14 @@ mod Meson {
             let (_oldPoolIndex, _initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             let tokenIndex = _inTokenIndexFrom(encodedSwap);
             
-            assert(fromAddress != ContractAddressZeroable::zero(), 'Swap not exists!');
+            assert(fromAddress.is_non_zero(), 'Swap not exists!');
             assert(
                 _expireTsFrom(encodedSwap) < get_block_timestamp().into(), 
                 'Swap is still locked!'
             );
 
             self.storage.postedSwaps.write(
-                encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
+                encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
             );
             self.storage._safeTransfer(tokenIndex, fromAddress, _amountFrom(encodedSwap));
         }
@@ -270,7 +275,7 @@ mod Meson {
             _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
 
             self.storage.postedSwaps.write(
-                encodedSwap, (0, EthAddressZeroable::zero(), ContractAddressZeroable::zero())
+                encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
             );
             if depositToPool {
                 self.storage.balanceOfPoolToken.write(
@@ -305,7 +310,7 @@ mod Meson {
             assert(amount > 0, 'Amount must be positive!');
             assert(poolIndex != 0, 'Cannot use 0 as pool index!');
             assert(
-                self.storage.ownerOfPool.read(poolIndex) == ContractAddressZeroable::zero(),
+                self.storage.ownerOfPool.read(poolIndex).is_zero(),
                 'Pool index already registered!'
             );
             assert(
@@ -465,7 +470,7 @@ mod Meson {
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) + _amountToLock(encodedSwap)
             );
             self.storage.lockedSwaps.write(
-                swapId, (0, 0, ContractAddressZeroable::zero())
+                swapId, (0, 0, 0_felt252.try_into().unwrap())
             );
         }
 
@@ -490,10 +495,7 @@ mod Meson {
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
                 'Cannot release. Expired!'
             );
-            assert(
-                recipient != ContractAddressZeroable::zero(), 
-                'Recipient cannot be zero!'
-            );
+            assert(recipient.is_non_zero(), 'Recipient cannot be zero!');
 
             if feeWaived { 
                 self.onlyPremiumManager();
@@ -544,10 +546,7 @@ mod Meson {
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
                 'Cannot release. Expired!'
             );
-            assert(
-                recipient != ContractAddressZeroable::zero(), 
-                'Recipient cannot be zero!'
-            );
+            assert(recipient.is_non_zero(), 'Recipient cannot be zero!');
 
             if feeWaived { 
                 self.onlyPremiumManager();

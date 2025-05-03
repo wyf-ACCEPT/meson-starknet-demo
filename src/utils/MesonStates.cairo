@@ -1,5 +1,5 @@
 #[starknet::component]
-mod MesonStatesComponent {
+pub mod MesonStatesComponent {
     use core::num::traits::Zero;
     use starknet::{
         ContractAddress, EthAddress, get_contract_address,
@@ -16,24 +16,24 @@ mod MesonStatesComponent {
     };
 
     #[storage]
-    struct Storage {
-        owner: ContractAddress,
-        premiumManager: ContractAddress,
-        balanceOfPoolToken: Map<u64, u256>,
-        ownerOfPool: Map<u64, ContractAddress>,
-        poolOfAuthorizedAddr: Map<ContractAddress, u64>,
-        indexOfToken: Map<ContractAddress, u8>,
-        tokenForIndex: Map<u8, ContractAddress>,
-        postedSwaps: Map<
+    pub struct Storage {
+        pub owner: ContractAddress,
+        pub premiumManager: ContractAddress,
+        pub balanceOfPoolToken: Map<u64, u256>,
+        pub ownerOfPool: Map<u64, ContractAddress>,
+        pub poolOfAuthorizedAddr: Map<ContractAddress, u64>,
+        pub indexOfToken: Map<ContractAddress, u8>,
+        pub tokenForIndex: Map<u8, ContractAddress>,
+        pub postedSwaps: Map<
             u256, (u64, EthAddress, ContractAddress)
         >,  // Customized struct cannot be used as the value of Map
-        lockedSwaps: Map<
+        pub lockedSwaps: Map<
             u256, (u64, u64, ContractAddress)
         >,  // Customized struct cannot be used as the value of Map
     }
 
     #[generate_trait]       // Internal functions that can be used in son contracts
-    impl InternalImpl<
+    pub impl InternalImpl<
         TContractState, +HasComponent<TContractState>
     > of InternalTrait<TContractState> {
         fn poolTokenBalance(
@@ -138,8 +138,7 @@ mod MesonStatesComponent {
             let token: ContractAddress = self.tokenForIndex.read(index);
             assert(token.is_non_zero(), 'Token for this index not exist');
             self.indexOfToken.write(token, 0);
-            let zero_address: ContractAddress = 0_felt252.try_into().unwrap();
-            self.tokenForIndex.write(index, zero_address);
+            self.tokenForIndex.write(index, 0_felt252.try_into().unwrap());
         }
 
         // _transferToContract: Don't need to write this function
