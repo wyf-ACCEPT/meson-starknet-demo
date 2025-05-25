@@ -33,10 +33,16 @@ pub fn _getTronSignHeaderBytes(is32: bool, is33: bool) -> ByteArray {
     }
 }
 
-// Note that this is for the testnet only!
-// keccak256 value for "bytes32 Sign to request a swap on Meson (Testnet)"
-pub const REQUEST_TYPE_HASH: u256 = 0x7b521e60f64ab56ff03ddfb26df49be54b20672b7acfffc1adeb256b554ccb25;
-// keccak256 value for "bytes32 Sign to request a swap on Meson (Testnet)address Recipient"
-pub const RELEASE_TYPE_HASH: u256 = 0xd23291d9d999318ac3ed13f43ac8003d6fbd69a4b532aeec9ffad516010a208c;
+// keccak256 value for "bytes32 Sign to request a swap on Meson"
+pub const REQUEST_TYPE_HASH: u256 = 0x9862d877599564bcd97c37305a7b0fdbe621d9c2a125026f2ad601f754a75abc;
+// keccak256 value for "bytes32 Sign to release a swap on Mesonaddress Recipient"
+pub const RELEASE_TYPE_HASH: u256 = 0x743e50106a7f059b52151dd4ba27a5f6c87b925ddfbdcf1c332e800da4b3df92;
 // keccak256 value for "bytes32 Sign to release a swap on Mesonaddress Recipient (tron address in hex format)"
 pub const RELEASE_TO_TRON_TYPE_HASH: u256 = 0x28cf5b919ed55db2b14d9e8b261a523eafb98bab117d3a8a56e559791415d17c;
+
+// // (testnet) keccak256 value for "bytes32 Sign to request a swap on Meson (Testnet)"
+// pub const REQUEST_TYPE_HASH: u256 = 0x7b521e60f64ab56ff03ddfb26df49be54b20672b7acfffc1adeb256b554ccb25;
+// // (testnet) keccak256 value for "bytes32 Sign to release a swap on Meson (Testnet)address Recipient"
+// pub const RELEASE_TYPE_HASH: u256 = 0xd23291d9d999318ac3ed13f43ac8003d6fbd69a4b532aeec9ffad516010a208c;
+// // (testnet) keccak256 value for "bytes32 Sign to release a swap on Meson (Testnet)address Recipient (tron address in hex format)"
+// pub const RELEASE_TO_TRON_TYPE_HASH: u256 = 0xd4786e314a149e139351cd038cade52355604bd9190780c901fd5733336bffbd;
