@@ -2,7 +2,7 @@
 mod Meson {
     use core::num::traits::Zero;
     use starknet::{
-        EthAddress, ContractAddress,
+        EthAddress, ContractAddress, ClassHash,
         // contract_address::ContractAddressZeroable,
         // eth_address::EthAddressZeroable,
         get_caller_address, get_block_timestamp, get_contract_address,
@@ -11,6 +11,7 @@ mod Meson {
             StorageMapReadAccess, StorageMapWriteAccess,
         },
     };
+    use openzeppelin::upgrades::{interface::IUpgradeable, UpgradeableComponent};
     use meson_starknet::interface::{
         MesonViewStorageTrait, MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
     };
@@ -26,21 +27,27 @@ mod Meson {
     };
     
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     impl MesonInternalImpl = MesonStatesComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
         #[nested(v0)]
         #[substorage(v0)]
-        storage: MesonStatesComponent::Storage
+        storage: MesonStatesComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
     
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
         #[flat]
-        MesonEvent: MesonStatesComponent::Event
+        MesonEvent: MesonStatesComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[constructor]
@@ -595,7 +602,14 @@ mod Meson {
                 swapId, (0, 0, get_contract_address())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
         }
+    }
 
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.onlyOwner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
 }
