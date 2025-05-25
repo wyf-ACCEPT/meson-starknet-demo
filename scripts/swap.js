@@ -134,7 +134,7 @@ main = async function () {
   )
   console.log(
     '    Carol (deposit in pool) = ',
-    formatUnits((await meson.getBalanceOfPoolToken(poolTokenIndex)).toString(), decimals)
+    formatUnits((await meson.balanceOfPoolToken(poolTokenIndex)).toString(), decimals)
   )
 
 

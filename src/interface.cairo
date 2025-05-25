@@ -5,13 +5,14 @@ pub trait MesonViewStorageTrait<TState> {
     // View functions
     fn getOwner(self: @TState) -> ContractAddress;
     fn getPremiumManager(self: @TState) -> ContractAddress;
-    fn getBalanceOfPoolToken(self: @TState, poolTokenIndex: u64) -> u256;
-    fn getOwnerOfPool(self: @TState, poolIndex: u64) -> ContractAddress;
-    fn getPoolOfAuthorizedAddr(self: @TState, addr: ContractAddress) -> u64;
+    fn balanceOfPoolToken(self: @TState, poolTokenIndex: u64) -> u256;
+    fn ownerOfPool(self: @TState, poolIndex: u64) -> ContractAddress;
+    fn poolOfAuthorizedAddr(self: @TState, addr: ContractAddress) -> u64;
     fn getIndexOfToken(self: @TState, token: ContractAddress) -> u8;
     fn getTokenForIndex(self: @TState, index: u8) -> ContractAddress;
     fn getPostedSwap(self: @TState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress);
     fn getLockedSwap(self: @TState, swapId: u256) -> (u64, u64, ContractAddress);
+    fn getShortCoinType(self: @TState) -> u16;
 }
 
 #[starknet::interface]

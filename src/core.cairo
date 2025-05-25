@@ -61,15 +61,15 @@ mod Meson {
             self.storage.premiumManager.read()
         }
 
-        fn getBalanceOfPoolToken(self: @ContractState, poolTokenIndex: u64) -> u256 {
+        fn balanceOfPoolToken(self: @ContractState, poolTokenIndex: u64) -> u256 {
             self.storage.balanceOfPoolToken.read(poolTokenIndex)
         }
 
-        fn getOwnerOfPool(self: @ContractState, poolIndex: u64) -> ContractAddress {
+        fn ownerOfPool(self: @ContractState, poolIndex: u64) -> ContractAddress {
             self.storage.ownerOfPool.read(poolIndex)
         }
 
-        fn getPoolOfAuthorizedAddr(self: @ContractState, addr: ContractAddress) -> u64 {
+        fn poolOfAuthorizedAddr(self: @ContractState, addr: ContractAddress) -> u64 {
             self.storage.poolOfAuthorizedAddr.read(addr)
         }
 
@@ -89,6 +89,10 @@ mod Meson {
         fn getLockedSwap(self: @ContractState, swapId: u256) 
             -> (u64, u64, ContractAddress) {
             self.storage.lockedSwaps.read(swapId)
+        }
+
+        fn getShortCoinType(self: @ContractState) -> u16 {
+            MesonConstants::SHORT_COIN_TYPE
         }
         
     }
