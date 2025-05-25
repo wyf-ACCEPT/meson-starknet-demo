@@ -94,6 +94,29 @@ mod Meson {
         fn getShortCoinType(self: @ContractState) -> u16 {
             MesonConstants::SHORT_COIN_TYPE
         }
+
+        fn poolTokenBalance(
+            self: @ContractState, 
+            token: ContractAddress,
+            addr: ContractAddress
+        ) -> u256 {
+            let tokenIndex: u8 = self.storage.indexOfToken.read(token);
+            let poolIndex: u64 = self.storage.poolOfAuthorizedAddr.read(addr);
+            if poolIndex == 0 || tokenIndex == 0 {
+                0
+            } else {
+                let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, poolIndex);
+                self.storage.balanceOfPoolToken.read(poolTokenIndex)
+            }
+        }
+
+        fn serviceFeeCollected(
+            self: @ContractState, 
+            tokenIndex: u8
+        ) -> u256 {
+            let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, 0);
+            self.storage.balanceOfPoolToken.read(poolTokenIndex)
+        }
         
     }
 

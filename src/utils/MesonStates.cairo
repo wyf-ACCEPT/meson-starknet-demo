@@ -12,7 +12,7 @@ pub mod MesonStatesComponent {
         IERC20Dispatcher, IERC20DispatcherTrait
     };
     use meson_starknet::utils::MesonHelpers::{
-        _poolTokenIndexFrom, _isCoreToken, _needAdjustAmount
+        _isCoreToken, _needAdjustAmount
     };
 
     #[storage]
@@ -36,29 +36,6 @@ pub mod MesonStatesComponent {
     pub impl InternalImpl<
         TContractState, +HasComponent<TContractState>
     > of InternalTrait<TContractState> {
-        fn poolTokenBalance(
-            self: @ComponentState<TContractState>, 
-            token: ContractAddress,
-            addr: ContractAddress
-        ) -> u256 {
-            let tokenIndex: u8 = self.indexOfToken.read(token);
-            let poolIndex: u64 = self.poolOfAuthorizedAddr.read(addr);
-            if poolIndex == 0 || tokenIndex == 0 {
-                0
-            } else {
-                let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, poolIndex);
-                self.balanceOfPoolToken.read(poolTokenIndex)
-            }
-        }
-
-        fn serviceFeeCollected(
-            self: @ComponentState<TContractState>, 
-            tokenIndex: u8
-        ) -> u256 {
-            let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, 0);
-            self.balanceOfPoolToken.read(poolTokenIndex)
-        }
-
         fn _depositToken(
             ref self: ComponentState<TContractState>,
             tokenIndex: u8,
