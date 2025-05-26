@@ -461,13 +461,13 @@ mod Meson {
             self.forTargetChain(encodedSwap);
 
             let swapId = _getSwapId(encodedSwap, initiator);
-            let (existPoolIndex, _, _) = self.getLockedSwap(swapId);
+            let (_, existUntil, _) = self.getLockedSwap(swapId);
             let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
             let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
             let until = get_block_timestamp().into() + MesonConstants::LOCK_TIME_PERIOD;
             let coreAmount = _coreTokenAmount(encodedSwap);
 
-            assert(existPoolIndex == 0, 'Swap already exists');
+            assert(existUntil == 0, 'Swap already exists');
             assert(poolIndex != 0, 'Caller not registered!');
             assert(
                 until < _expireTsFrom(encodedSwap) - 5 * 60,    // 5 minutes left
@@ -493,7 +493,7 @@ mod Meson {
             let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
             let coreAmount = _coreTokenAmount(encodedSwap);
 
-            assert(poolIndex != 0, 'Swap does not exist!');
+            assert(until > 1, 'Swap does not exist!');
             assert(until < get_block_timestamp().into(), 'Swap still in lock!');
 
             if coreAmount > 0 {
@@ -517,14 +517,14 @@ mod Meson {
         ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
-            let (poolIndex, _until, recipient) = self.getLockedSwap(swapId);
+            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
             let coreAmount = _coreTokenAmount(encodedSwap);
             let recipientAsEth = _ethAddressFromStarknet(recipient);
             let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
             let mut releaseAmount = _amountToLock(encodedSwap);
 
             _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
-            assert(poolIndex != 0, 'Swap does not exist!');
+            assert(until > 1, 'Swap does not exist!');
             assert(
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
                 'Cannot release. Expired!'
@@ -548,7 +548,7 @@ mod Meson {
                 _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
-                swapId, (0, 0, get_contract_address())      
+                swapId, (0, 1, 0_felt252.try_into().unwrap())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
         }
 
@@ -562,19 +562,17 @@ mod Meson {
         ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
-            // let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let (_, until, recipient) = self.getLockedSwap(swapId);
             let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
-            let (existPoolIndex, _, _) = self.getLockedSwap(swapId);
-            // let tokenIndex = _outTokenIndexFrom(encodedSwap);
             let coreAmount = _coreTokenAmount(encodedSwap);
             let recipientAsEth = _ethAddressFromStarknet(recipient);
+            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
             let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
             let mut releaseAmount = _amountToLock(encodedSwap);
 
             self.forTargetChain(encodedSwap);
             _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
-            assert(poolIndex != 0, 'Swap does not exist!');
-            assert(existPoolIndex == 0, 'Swap already exists');
+            assert(until == 0, 'Swap already exists');
             assert(poolIndex != 0, 'Caller not registered!');
             assert(
                 _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
@@ -582,6 +580,10 @@ mod Meson {
             );
             assert(recipient.is_non_zero(), 'Recipient cannot be zero!');
 
+            self.storage.balanceOfPoolToken.write(
+                poolTokenIndex,
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) - releaseAmount
+            );
             if feeWaived { 
                 self.onlyPremiumManager();
             } else {
@@ -599,7 +601,7 @@ mod Meson {
                 _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
-                swapId, (0, 0, get_contract_address())      
+                swapId, (0, 1, 0_felt252.try_into().unwrap())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
         }
     }
