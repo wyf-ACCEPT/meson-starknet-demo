@@ -46,6 +46,11 @@ pub trait MesonSwapTrait<TState> {
         initiator: EthAddress, 
         poolIndex: u64
     );
+    fn postSwapFromInitiator(
+        ref self: TState, 
+        encodedSwap: u256, 
+        postingValue: u256
+    );
     fn bondSwap(ref self: TState, encodedSwap: u256, poolIndex: u64);
     fn cancelSwap(ref self: TState, encodedSwap: u256);
     fn executeSwap(

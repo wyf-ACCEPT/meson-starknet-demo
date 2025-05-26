@@ -169,13 +169,13 @@ pub(crate) fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u
     ((encodedSwap & 0xFF000000) * POW_2_16).try_into().unwrap() | poolIndex
 }
 
-// pub(crate) fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
-//     (postedSwap / POW_2_40).into()
-// }
+pub(crate) fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
+    (postedSwap / POW_2_40).into()
+}
 
-// pub(crate) fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
-//     (postedSwap & U40_MAX).try_into().unwrap()
-// }
+pub(crate) fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
+    (postedSwap & U40_MAX).try_into().unwrap()
+}
 
 // pub(crate) fn _lockedSwapFrom(until: u256, poolIndex: u64) -> u128 {   // original (uint256, uint40) -> uint80
 //     ((until * POW_2_40).try_into().unwrap() | poolIndex).into()

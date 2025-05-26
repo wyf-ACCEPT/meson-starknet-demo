@@ -24,6 +24,7 @@ mod Meson {
         _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
         _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
         _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
+        _initiatorFromPosted, _poolIndexFromPosted,
     };
     
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
@@ -252,6 +253,25 @@ mod Meson {
             
             // TODO: Don't need to check request signature?
             // _checkRequestSignature(encodedSwap, r, yParityAndS, initiator);
+
+            self.storage.postedSwaps.write(
+                encodedSwap, (poolIndex, initiator, fromAddress)
+            );
+            self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+        }
+
+        fn postSwapFromInitiator(
+            ref self: ContractState, 
+            encodedSwap: u256, 
+            postingValue: u256
+        ) {
+            self.verifyEncodedSwap(encodedSwap);
+
+            let initiator = _initiatorFromPosted(postingValue);
+            let poolIndex = _poolIndexFromPosted(postingValue);
+
+            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            let fromAddress = get_caller_address();
 
             self.storage.postedSwaps.write(
                 encodedSwap, (poolIndex, initiator, fromAddress)
