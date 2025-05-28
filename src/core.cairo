@@ -3,9 +3,7 @@ mod Meson {
     use core::num::traits::Zero;
     use starknet::{
         EthAddress, ContractAddress, ClassHash,
-        // contract_address::ContractAddressZeroable,
-        // eth_address::EthAddressZeroable,
-        get_caller_address, get_block_timestamp, get_contract_address,
+        get_caller_address, get_block_timestamp,
         storage::{
             StoragePointerWriteAccess, StoragePointerReadAccess,
             StorageMapReadAccess, StorageMapWriteAccess,
@@ -25,6 +23,11 @@ mod Meson {
         _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
         _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
         _initiatorFromPosted, _poolIndexFromPosted,
+    };
+    use meson_starknet::events::{
+        PremiumManagerTransferred, SwapPosted, SwapBonded, SwapCancelled, SwapExecuted,
+        PoolRegistered, PoolDeposited, PoolWithdrawn, PoolAuthorizedAddrAdded,
+        PoolAuthorizedAddrRemoved, PoolOwnerTransferred, SwapLocked, SwapUnlocked, SwapReleased,
     };
     
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
@@ -49,12 +52,31 @@ mod Meson {
         MesonEvent: MesonStatesComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+
+        PremiumManagerTransferred: PremiumManagerTransferred,
+        SwapPosted: SwapPosted,
+        SwapBonded: SwapBonded,
+        SwapCancelled: SwapCancelled,
+        SwapExecuted: SwapExecuted,
+        PoolRegistered: PoolRegistered,
+        PoolDeposited: PoolDeposited,
+        PoolWithdrawn: PoolWithdrawn,
+        PoolAuthorizedAddrAdded: PoolAuthorizedAddrAdded,
+        PoolAuthorizedAddrRemoved: PoolAuthorizedAddrRemoved,
+        PoolOwnerTransferred: PoolOwnerTransferred,
+        SwapLocked: SwapLocked,
+        SwapUnlocked: SwapUnlocked,
+        SwapReleased: SwapReleased,
     }
 
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.storage.owner.write(owner);
         self.storage.premiumManager.write(owner);
+        self.emit(PremiumManagerTransferred {
+            prevPremiumManager: 0.try_into().unwrap(),
+            newPremiumManager: owner,
+        });
     }
 
     #[abi(embed_v0)]
@@ -185,6 +207,10 @@ mod Meson {
         fn transferPremiumManager(ref self: ContractState, newPremiumManager: ContractAddress) {
             self.onlyPremiumManager();
             self.storage._transferPremiumManager(newPremiumManager);
+            self.emit(PremiumManagerTransferred {
+                prevPremiumManager: get_caller_address(),
+                newPremiumManager,
+            });
         }
 
         fn withdrawServiceFee(
@@ -258,6 +284,8 @@ mod Meson {
                 encodedSwap, (poolIndex, initiator, fromAddress)
             );
             self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+
+            self.emit(SwapPosted { encodedSwap });
         }
 
         fn postSwapFromInitiator(
@@ -277,6 +305,8 @@ mod Meson {
                 encodedSwap, (poolIndex, initiator, fromAddress)
             );
             self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+
+            self.emit(SwapPosted { encodedSwap });
         }
 
         fn bondSwap(ref self: ContractState, encodedSwap: u256, poolIndex: u64) {
@@ -293,6 +323,8 @@ mod Meson {
             self.storage.postedSwaps.write(
                 encodedSwap, (poolIndex, initiator, fromAddress)
             );
+
+            self.emit(SwapBonded { encodedSwap });
         }
 
         fn cancelSwap(ref self: ContractState, encodedSwap: u256) {
@@ -309,6 +341,8 @@ mod Meson {
                 encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
             );
             self.storage._safeTransfer(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+
+            self.emit(SwapCancelled { encodedSwap });
         }
 
         fn executeSwap(
@@ -340,6 +374,8 @@ mod Meson {
                 let poolOwner = self.storage.ownerOfPool.read(poolIndex);
                 self.storage._safeTransfer(tokenIndex, poolOwner, amount);
             }
+
+            self.emit(SwapExecuted { encodedSwap });
         }
 
     }
@@ -380,6 +416,9 @@ mod Meson {
                 poolTokenIndex, 
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
             );
+
+            self.emit(PoolRegistered { poolIndex, owner: poolOwner });
+            self.emit(PoolDeposited { poolTokenIndex, amount });
         }
 
         fn deposit(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
@@ -399,6 +438,8 @@ mod Meson {
                 poolTokenIndex, 
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
             );
+
+            self.emit(PoolDeposited { poolTokenIndex, amount });
         }
 
         fn withdraw(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
@@ -418,6 +459,8 @@ mod Meson {
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) - amount
             );
             self.storage._safeTransfer(tokenIndex, poolOwner, amount);
+
+            self.emit(PoolWithdrawn { poolTokenIndex, amount });
         }
 
         fn addAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
@@ -435,6 +478,7 @@ mod Meson {
             );
 
             self.storage.poolOfAuthorizedAddr.write(addr, poolIndex);
+            self.emit(PoolAuthorizedAddrAdded { poolIndex, addr });
         }
 
         fn removeAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
@@ -452,6 +496,7 @@ mod Meson {
             );
 
             self.storage.poolOfAuthorizedAddr.write(addr, 0);
+            self.emit(PoolAuthorizedAddrRemoved { poolIndex, addr });
         }
 
         fn transferPoolOwner(ref self: ContractState, addr: ContractAddress) {
@@ -469,6 +514,7 @@ mod Meson {
             );
 
             self.storage.ownerOfPool.write(poolIndex, addr);
+            self.emit(PoolOwnerTransferred { poolIndex, prevOwner: poolOwner, newOwner: addr });
         }
 
         // Write functions (users)
@@ -505,6 +551,7 @@ mod Meson {
                 swapId, (poolIndex, until.try_into().unwrap(), recipient)
             );
 
+            self.emit(SwapLocked { encodedSwap });
         }
 
         fn unlock(ref self: ContractState, encodedSwap: u256, initiator: EthAddress) {
@@ -526,6 +573,8 @@ mod Meson {
             self.storage.lockedSwaps.write(
                 swapId, (0, 0, 0_felt252.try_into().unwrap())
             );
+
+            self.emit(SwapUnlocked { encodedSwap });
         }
 
         fn release(
@@ -570,6 +619,8 @@ mod Meson {
             self.storage.lockedSwaps.write(
                 swapId, (0, 1, 0_felt252.try_into().unwrap())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
+
+            self.emit(SwapReleased { encodedSwap });
         }
 
         fn directRelease(
@@ -623,6 +674,8 @@ mod Meson {
             self.storage.lockedSwaps.write(
                 swapId, (0, 1, 0_felt252.try_into().unwrap())      
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
+
+            self.emit(SwapReleased { encodedSwap });
         }
     }
 
