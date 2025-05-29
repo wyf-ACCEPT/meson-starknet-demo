@@ -14,22 +14,10 @@ mod Meson {
         MesonViewStorageTrait, MesonManagerTrait, MesonSwapTrait, MesonPoolsTrait
     };
     use meson_starknet::utils::{
-        MesonConstants,
-        MesonStates::MesonStatesComponent,
+        MesonConstants, MesonHelpers, MesonStates::MesonStatesComponent,
     };
-    use meson_starknet::utils::MesonHelpers::{
-        _outTokenIndexFrom, _inTokenIndexFrom, _tokenType, _inChainFrom, _outChainFrom,
-        _poolTokenIndexFrom, _poolIndexFrom, _tokenIndexFrom, _poolTokenIndexForOutToken,
-        _amountFrom, _expireTsFrom, _getSwapId, _coreTokenAmount, _amountToLock,
-        _checkReleaseSignature, _feeWaived, _ethAddressFromStarknet, _serviceFee,
-        _initiatorFromPosted, _poolIndexFromPosted,
-    };
-    use meson_starknet::events::{
-        PremiumManagerTransferred, SwapPosted, SwapBonded, SwapCancelled, SwapExecuted,
-        PoolRegistered, PoolDeposited, PoolWithdrawn, PoolAuthorizedAddrAdded,
-        PoolAuthorizedAddrRemoved, PoolOwnerTransferred, SwapLocked, SwapUnlocked, SwapReleased,
-    };
-    
+    use meson_starknet::events;
+
     component!(path: MesonStatesComponent, storage: storage, event: MesonEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
@@ -44,7 +32,7 @@ mod Meson {
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
     }
-    
+
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
@@ -53,27 +41,27 @@ mod Meson {
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
 
-        PremiumManagerTransferred: PremiumManagerTransferred,
-        SwapPosted: SwapPosted,
-        SwapBonded: SwapBonded,
-        SwapCancelled: SwapCancelled,
-        SwapExecuted: SwapExecuted,
-        PoolRegistered: PoolRegistered,
-        PoolDeposited: PoolDeposited,
-        PoolWithdrawn: PoolWithdrawn,
-        PoolAuthorizedAddrAdded: PoolAuthorizedAddrAdded,
-        PoolAuthorizedAddrRemoved: PoolAuthorizedAddrRemoved,
-        PoolOwnerTransferred: PoolOwnerTransferred,
-        SwapLocked: SwapLocked,
-        SwapUnlocked: SwapUnlocked,
-        SwapReleased: SwapReleased,
+        PremiumManagerTransferred: events::PremiumManagerTransferred,
+        SwapPosted: events::SwapPosted,
+        SwapBonded: events::SwapBonded,
+        SwapCancelled: events::SwapCancelled,
+        SwapExecuted: events::SwapExecuted,
+        PoolRegistered: events::PoolRegistered,
+        PoolDeposited: events::PoolDeposited,
+        PoolWithdrawn: events::PoolWithdrawn,
+        PoolAuthorizedAddrAdded: events::PoolAuthorizedAddrAdded,
+        PoolAuthorizedAddrRemoved: events::PoolAuthorizedAddrRemoved,
+        PoolOwnerTransferred: events::PoolOwnerTransferred,
+        SwapLocked: events::SwapLocked,
+        SwapUnlocked: events::SwapUnlocked,
+        SwapReleased: events::SwapReleased,
     }
 
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.storage.owner.write(owner);
         self.storage.premiumManager.write(owner);
-        self.emit(PremiumManagerTransferred {
+        self.emit(events::PremiumManagerTransferred {
             prevPremiumManager: 0.try_into().unwrap(),
             newPremiumManager: owner,
         });
@@ -81,7 +69,7 @@ mod Meson {
 
     #[abi(embed_v0)]
     impl MesonViewStorage of MesonViewStorageTrait<ContractState> {
-        
+
         // View functions
         fn getOwner(self: @ContractState) -> ContractAddress {
             self.storage.owner.read()
@@ -103,30 +91,26 @@ mod Meson {
             self.storage.poolOfAuthorizedAddr.read(addr)
         }
 
-        fn getIndexOfToken(self: @ContractState, token: ContractAddress) -> u8 {
+        fn indexOfToken(self: @ContractState, token: ContractAddress) -> u8 {
             self.storage.indexOfToken.read(token)
         }
 
-        fn getTokenForIndex(self: @ContractState, index: u8) -> ContractAddress {
+        fn tokenForIndex(self: @ContractState, index: u8) -> ContractAddress {
             self.storage.tokenForIndex.read(index)
         }
 
-        fn getPostedSwap(self: @ContractState, encodedSwap: u256) 
+        fn getPostedSwap(self: @ContractState, encodedSwap: u256)
             -> (u64, EthAddress, ContractAddress) {
             self.storage.postedSwaps.read(encodedSwap)
         }
 
-        fn getLockedSwap(self: @ContractState, swapId: u256) 
+        fn getLockedSwap(self: @ContractState, swapId: u256)
             -> (u64, u64, ContractAddress) {
             self.storage.lockedSwaps.read(swapId)
         }
 
-        fn getShortCoinType(self: @ContractState) -> u16 {
-            MesonConstants::SHORT_COIN_TYPE
-        }
-
         fn poolTokenBalance(
-            self: @ContractState, 
+            self: @ContractState,
             token: ContractAddress,
             addr: ContractAddress
         ) -> u256 {
@@ -135,25 +119,29 @@ mod Meson {
             if poolIndex == 0 || tokenIndex == 0 {
                 0
             } else {
-                let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, poolIndex);
+                let poolTokenIndex: u64 = MesonHelpers::_poolTokenIndexFrom(tokenIndex, poolIndex);
                 self.storage.balanceOfPoolToken.read(poolTokenIndex)
             }
         }
 
         fn serviceFeeCollected(
-            self: @ContractState, 
+            self: @ContractState,
             tokenIndex: u8
         ) -> u256 {
-            let poolTokenIndex: u64 = _poolTokenIndexFrom(tokenIndex, 0);
+            let poolTokenIndex: u64 = MesonHelpers::_poolTokenIndexFrom(tokenIndex, 0);
             self.storage.balanceOfPoolToken.read(poolTokenIndex)
         }
-        
+
     }
 
     #[abi(embed_v0)]
     impl MesonManager of MesonManagerTrait<ContractState> {
 
         // View functions
+        fn getShortCoinType(self: @ContractState) -> u16 {
+            MesonConstants::SHORT_COIN_TYPE
+        }
+
         fn getSupportedTokens(self: @ContractState) -> (Array<ContractAddress>, Array<u8>) {
             // TODO: test this function
             let mut tokens: Array<ContractAddress> = array![];
@@ -176,14 +164,13 @@ mod Meson {
         // Modifier
         fn onlyOwner(self: @ContractState) {
             assert(
-                get_caller_address() == self.storage.owner.read(), 
-                'Only owner can call!'
+                get_caller_address() == self.storage.owner.read(), 'Only owner can call!'
             );
         }
 
         fn onlyPremiumManager(self: @ContractState) {
             assert(
-                get_caller_address() == self.storage.premiumManager.read(), 
+                get_caller_address() == self.storage.premiumManager.read(),
                 'Only premium manager can call!'
             );
         }
@@ -203,11 +190,11 @@ mod Meson {
             self.onlyOwner();
             self.storage._transferOwnership(newOwner);
         }
-        
+
         fn transferPremiumManager(ref self: ContractState, newPremiumManager: ContractAddress) {
             self.onlyPremiumManager();
             self.storage._transferPremiumManager(newPremiumManager);
-            self.emit(PremiumManagerTransferred {
+            self.emit(events::PremiumManagerTransferred {
                 prevPremiumManager: get_caller_address(),
                 newPremiumManager,
             });
@@ -221,8 +208,8 @@ mod Meson {
                 self.storage.ownerOfPool.read(toPoolIndex).is_non_zero(),
                 'Pool index not registered'
             );
-            let poolFrom = _poolTokenIndexFrom(tokenIndex, 0);
-            let poolTo = _poolTokenIndexFrom(tokenIndex, toPoolIndex);
+            let poolFrom = MesonHelpers::_poolTokenIndexFrom(tokenIndex, 0);
+            let poolTo = MesonHelpers::_poolTokenIndexFrom(tokenIndex, toPoolIndex);
             self.storage.balanceOfPoolToken.write(
                 poolFrom, self.storage.balanceOfPoolToken.read(poolFrom) - amount
             );
@@ -239,135 +226,119 @@ mod Meson {
         // Modifier
         fn verifyEncodedSwap(self: @ContractState, encodedSwap: u256) {
             assert(
-                _inChainFrom(encodedSwap) == MesonConstants::SHORT_COIN_TYPE, 
+                MesonHelpers::_inChainFrom(encodedSwap) == MesonConstants::SHORT_COIN_TYPE,
                 'Swap not for this chain!'
             );
             assert(
-                _tokenType(_inTokenIndexFrom(encodedSwap)) == 
-                _tokenType(_outTokenIndexFrom(encodedSwap)),
+                MesonHelpers::_tokenType(MesonHelpers::_inTokenIndexFrom(encodedSwap)) ==
+                MesonHelpers::_tokenType(MesonHelpers::_outTokenIndexFrom(encodedSwap)),
                 'In & out token types not match!'
             );
 
             let (poolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             assert(
-                poolIndex == 0 && initiator.is_zero() &&  fromAddress.is_zero(), 
+                poolIndex == 0 && initiator.is_zero() && fromAddress.is_zero(),
                 'Swap already exists'
             );
 
             assert(
-                _amountFrom(encodedSwap) <= MesonConstants::MAX_SWAP_AMOUNT, 
+                MesonHelpers::_amountFrom(encodedSwap) <= MesonConstants::MAX_SWAP_AMOUNT,
                 'Swap amount too large!'
             );
 
-            let delta = _expireTsFrom(encodedSwap) - get_block_timestamp().into();
+            let delta = MesonHelpers::_expireTsFrom(encodedSwap) - get_block_timestamp().into();
             assert(delta > MesonConstants::MIN_BOND_TIME_PERIOD, 'Expire ts too early');
             assert(delta < MesonConstants::MAX_BOND_TIME_PERIOD, 'Expire ts too late');
         }
 
         // Write functions
-        fn postSwap(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            initiator: EthAddress, 
-            poolIndex: u64
-        ) {
-            // TODO: This functions is only for user?
+        fn postSwap(ref self: ContractState, encodedSwap: u256, postingValue: u256) {
             self.verifyEncodedSwap(encodedSwap);
 
-            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            let initiator = MesonHelpers::_initiatorFromPosted(postingValue);
+            let poolIndex = MesonHelpers::_poolIndexFromPosted(postingValue);
+
+            let tokenIndex = MesonHelpers::_inTokenIndexFrom(encodedSwap);
             let fromAddress = get_caller_address();
-            
-            // TODO: Don't need to check request signature?
-            // _checkRequestSignature(encodedSwap, r, yParityAndS, initiator);
 
-            self.storage.postedSwaps.write(
-                encodedSwap, (poolIndex, initiator, fromAddress)
-            );
-            self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+            self.storage.postedSwaps.write(encodedSwap, (poolIndex, initiator, fromAddress));
+            self.storage._depositToken(tokenIndex, fromAddress, MesonHelpers::_amountFrom(encodedSwap));
 
-            self.emit(SwapPosted { encodedSwap });
+            self.emit(events::SwapPosted { encodedSwap });
         }
 
-        fn postSwapFromInitiator(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            postingValue: u256
-        ) {
+        fn postSwapFromInitiator(ref self: ContractState, encodedSwap: u256, postingValue: u256) {
             self.verifyEncodedSwap(encodedSwap);
 
-            let initiator = _initiatorFromPosted(postingValue);
-            let poolIndex = _poolIndexFromPosted(postingValue);
+            let initiator = MesonHelpers::_initiatorFromPosted(postingValue);
+            let poolIndex = MesonHelpers::_poolIndexFromPosted(postingValue);
 
-            let tokenIndex = _inTokenIndexFrom(encodedSwap);
+            let tokenIndex = MesonHelpers::_inTokenIndexFrom(encodedSwap);
             let fromAddress = get_caller_address();
 
-            self.storage.postedSwaps.write(
-                encodedSwap, (poolIndex, initiator, fromAddress)
-            );
-            self.storage._depositToken(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+            self.storage.postedSwaps.write(encodedSwap, (poolIndex, initiator, fromAddress));
+            self.storage._depositToken(tokenIndex, fromAddress, MesonHelpers::_amountFrom(encodedSwap));
 
-            self.emit(SwapPosted { encodedSwap });
+            self.emit(events::SwapPosted { encodedSwap });
         }
 
         fn bondSwap(ref self: ContractState, encodedSwap: u256, poolIndex: u64) {
-            let (oldPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
+            let (prevPoolIndex, initiator, fromAddress) = self.getPostedSwap(encodedSwap);
             let poolOwner = get_caller_address();
 
             assert(fromAddress.is_non_zero(), 'Swap not exists!');
-            assert(oldPoolIndex == 0, 'Swap bonded to others!');
+            assert(prevPoolIndex == 0, 'Swap bonded to others!');
             assert(
                 self.storage.poolOfAuthorizedAddr.read(poolOwner) == poolIndex,
                 'Not authorized address!'
             );
 
-            self.storage.postedSwaps.write(
-                encodedSwap, (poolIndex, initiator, fromAddress)
-            );
+            self.storage.postedSwaps.write(encodedSwap, (poolIndex, initiator, fromAddress));
 
-            self.emit(SwapBonded { encodedSwap });
+            self.emit(events::SwapBonded { encodedSwap });
         }
 
         fn cancelSwap(ref self: ContractState, encodedSwap: u256) {
             let (_oldPoolIndex, _initiator, fromAddress) = self.getPostedSwap(encodedSwap);
-            let tokenIndex = _inTokenIndexFrom(encodedSwap);
-            
+            let tokenIndex = MesonHelpers::_inTokenIndexFrom(encodedSwap);
+
             assert(fromAddress.is_non_zero(), 'Swap not exists!');
             assert(
-                _expireTsFrom(encodedSwap) < get_block_timestamp().into(), 
+                MesonHelpers::_expireTsFrom(encodedSwap) < get_block_timestamp().into(),
                 'Swap is still locked!'
             );
 
             self.storage.postedSwaps.write(
                 encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
             );
-            self.storage._safeTransfer(tokenIndex, fromAddress, _amountFrom(encodedSwap));
+            self.storage._safeTransfer(tokenIndex, fromAddress, MesonHelpers::_amountFrom(encodedSwap));
 
-            self.emit(SwapCancelled { encodedSwap });
+            self.emit(events::SwapCancelled { encodedSwap });
         }
 
         fn executeSwap(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            r: u256, 
-            yParityAndS: u256, 
-            recipient: EthAddress, 
+            ref self: ContractState,
+            encodedSwap: u256,
+            r: u256,
+            yParityAndS: u256,
+            recipient: EthAddress,
             depositToPool: bool
         ) {
             let (poolIndex, initiator, _fromAddress) = self.getPostedSwap(encodedSwap);
-            let amount = _amountFrom(encodedSwap);
-            let tokenIndex = _inTokenIndexFrom(encodedSwap);
-            let poolTokenIndex = _poolTokenIndexFrom(tokenIndex, poolIndex);
+            let amount = MesonHelpers::_amountFrom(encodedSwap);
+            let tokenIndex = MesonHelpers::_inTokenIndexFrom(encodedSwap);
+            let poolTokenIndex = MesonHelpers::_poolTokenIndexFrom(tokenIndex, poolIndex);
 
             assert(poolIndex != 0, 'Pool index cannot be 0!');
 
-            _checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+            MesonHelpers::_checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
 
             self.storage.postedSwaps.write(
-                encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
+                encodedSwap, (poolIndex, initiator, 0_felt252.try_into().unwrap())
             );
             if depositToPool {
                 self.storage.balanceOfPoolToken.write(
-                    poolTokenIndex, 
+                    poolTokenIndex,
                     self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
                 );
             } else {
@@ -375,7 +346,7 @@ mod Meson {
                 self.storage._safeTransfer(tokenIndex, poolOwner, amount);
             }
 
-            self.emit(SwapExecuted { encodedSwap });
+            self.emit(events::SwapExecuted { encodedSwap });
         }
 
     }
@@ -386,7 +357,7 @@ mod Meson {
         // Modifier
         fn forTargetChain(self: @ContractState, encodedSwap: u256) {
             assert(
-                _outChainFrom(encodedSwap) == MesonConstants::SHORT_COIN_TYPE,
+                MesonHelpers::_outChainFrom(encodedSwap) == MesonConstants::SHORT_COIN_TYPE,
                 'Swap not for this chain!'
             );
         }
@@ -394,8 +365,8 @@ mod Meson {
         // Write functions (LPs)
         fn depositAndRegister(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
             let poolOwner = get_caller_address();
-            let poolIndex = _poolIndexFrom(poolTokenIndex);
-            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+            let poolIndex = MesonHelpers::_poolIndexFrom(poolTokenIndex);
+            let tokenIndex = MesonHelpers::_tokenIndexFrom(poolTokenIndex);
 
             assert(amount > 0, 'Amount must be positive!');
             assert(poolIndex != 0, 'Cannot use 0 as pool index!');
@@ -413,18 +384,18 @@ mod Meson {
 
             self.storage._depositToken(tokenIndex, poolOwner, amount);
             self.storage.balanceOfPoolToken.write(
-                poolTokenIndex, 
+                poolTokenIndex,
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
             );
 
-            self.emit(PoolRegistered { poolIndex, owner: poolOwner });
-            self.emit(PoolDeposited { poolTokenIndex, amount });
+            self.emit(events::PoolRegistered { poolIndex, owner: poolOwner });
+            self.emit(events::PoolDeposited { poolTokenIndex, amount });
         }
 
         fn deposit(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
             let authrizedAddress = get_caller_address();
-            let poolIndex = _poolIndexFrom(poolTokenIndex);
-            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+            let poolIndex = MesonHelpers::_poolIndexFrom(poolTokenIndex);
+            let tokenIndex = MesonHelpers::_tokenIndexFrom(poolTokenIndex);
 
             assert(amount > 0, 'Amount must be positive!');
             assert(poolIndex != 0, 'Cannot use 0 as pool index!');
@@ -435,17 +406,17 @@ mod Meson {
 
             self.storage._depositToken(tokenIndex, authrizedAddress, amount);
             self.storage.balanceOfPoolToken.write(
-                poolTokenIndex, 
+                poolTokenIndex,
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) + amount
             );
 
-            self.emit(PoolDeposited { poolTokenIndex, amount });
+            self.emit(events::PoolDeposited { poolTokenIndex, amount });
         }
 
         fn withdraw(ref self: ContractState, amount: u256, poolTokenIndex: u64) {
             let poolOwner = get_caller_address();
-            let poolIndex = _poolIndexFrom(poolTokenIndex);
-            let tokenIndex = _tokenIndexFrom(poolTokenIndex);
+            let poolIndex = MesonHelpers::_poolIndexFrom(poolTokenIndex);
+            let tokenIndex = MesonHelpers::_tokenIndexFrom(poolTokenIndex);
 
             assert(amount > 0, 'Amount must be positive!');
             assert(poolIndex != 0, 'Cannot use 0 as pool index!');
@@ -455,12 +426,12 @@ mod Meson {
             );
 
             self.storage.balanceOfPoolToken.write(
-                poolTokenIndex, 
+                poolTokenIndex,
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) - amount
             );
             self.storage._safeTransfer(tokenIndex, poolOwner, amount);
 
-            self.emit(PoolWithdrawn { poolTokenIndex, amount });
+            self.emit(events::PoolWithdrawn { poolTokenIndex, amount });
         }
 
         fn addAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
@@ -478,7 +449,7 @@ mod Meson {
             );
 
             self.storage.poolOfAuthorizedAddr.write(addr, poolIndex);
-            self.emit(PoolAuthorizedAddrAdded { poolIndex, addr });
+            self.emit(events::PoolAuthorizedAddrAdded { poolIndex, addr });
         }
 
         fn removeAuthorizedAddr(ref self: ContractState, addr: ContractAddress) {
@@ -496,7 +467,7 @@ mod Meson {
             );
 
             self.storage.poolOfAuthorizedAddr.write(addr, 0);
-            self.emit(PoolAuthorizedAddrRemoved { poolIndex, addr });
+            self.emit(events::PoolAuthorizedAddrRemoved { poolIndex, addr });
         }
 
         fn transferPoolOwner(ref self: ContractState, addr: ContractAddress) {
@@ -514,29 +485,29 @@ mod Meson {
             );
 
             self.storage.ownerOfPool.write(poolIndex, addr);
-            self.emit(PoolOwnerTransferred { poolIndex, prevOwner: poolOwner, newOwner: addr });
+            self.emit(events::PoolOwnerTransferred { poolIndex, prevOwner: poolOwner, newOwner: addr });
         }
 
         // Write functions (users)
         fn lockSwap(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            initiator: EthAddress, 
+            ref self: ContractState,
+            encodedSwap: u256,
+            initiator: EthAddress,
             recipient: ContractAddress
         ) {
             self.forTargetChain(encodedSwap);
 
-            let swapId = _getSwapId(encodedSwap, initiator);
+            let swapId = MesonHelpers::_getSwapId(encodedSwap, initiator);
             let (_, existUntil, _) = self.getLockedSwap(swapId);
             let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
-            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
+            let poolTokenIndex = MesonHelpers::_poolTokenIndexForOutToken(encodedSwap, poolIndex);
             let until = get_block_timestamp().into() + MesonConstants::LOCK_TIME_PERIOD;
-            let coreAmount = _coreTokenAmount(encodedSwap);
+            let coreAmount = MesonHelpers::_coreTokenAmount(encodedSwap);
 
             assert(existUntil == 0, 'Swap already exists');
             assert(poolIndex != 0, 'Caller not registered!');
             assert(
-                until < _expireTsFrom(encodedSwap) - 5 * 60,    // 5 minutes left
+                until < MesonHelpers::_expireTsFrom(encodedSwap) - 5 * 60,    // 5 minutes left
                 'Expire time is soon!'
             );
 
@@ -544,21 +515,21 @@ mod Meson {
                 // TODO: add core token's case
             }
             self.storage.balanceOfPoolToken.write(
-                poolTokenIndex, 
-                self.storage.balanceOfPoolToken.read(poolTokenIndex) - _amountToLock(encodedSwap)
+                poolTokenIndex,
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) - MesonHelpers::_amountToLock(encodedSwap)
             );
             self.storage.lockedSwaps.write(
                 swapId, (poolIndex, until.try_into().unwrap(), recipient)
             );
 
-            self.emit(SwapLocked { encodedSwap });
+            self.emit(events::SwapLocked { encodedSwap });
         }
 
         fn unlock(ref self: ContractState, encodedSwap: u256, initiator: EthAddress) {
-            let swapId = _getSwapId(encodedSwap, initiator);
+            let swapId = MesonHelpers::_getSwapId(encodedSwap, initiator);
             let (poolIndex, until, _recipient) = self.getLockedSwap(swapId);
-            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
-            let coreAmount = _coreTokenAmount(encodedSwap);
+            let poolTokenIndex = MesonHelpers::_poolTokenIndexForOutToken(encodedSwap, poolIndex);
+            let coreAmount = MesonHelpers::_coreTokenAmount(encodedSwap);
 
             assert(until > 1, 'Swap does not exist!');
             assert(until < get_block_timestamp().into(), 'Swap still in lock!');
@@ -567,43 +538,43 @@ mod Meson {
                 // TODO
             }
             self.storage.balanceOfPoolToken.write(
-                poolTokenIndex, 
-                self.storage.balanceOfPoolToken.read(poolTokenIndex) + _amountToLock(encodedSwap)
+                poolTokenIndex,
+                self.storage.balanceOfPoolToken.read(poolTokenIndex) + MesonHelpers::_amountToLock(encodedSwap)
             );
             self.storage.lockedSwaps.write(
                 swapId, (0, 0, 0_felt252.try_into().unwrap())
             );
 
-            self.emit(SwapUnlocked { encodedSwap });
+            self.emit(events::SwapUnlocked { encodedSwap });
         }
 
         fn release(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            r: u256, 
-            yParityAndS: u256, 
+            ref self: ContractState,
+            encodedSwap: u256,
+            r: u256,
+            yParityAndS: u256,
             initiator: EthAddress
         ) {
-            let feeWaived = _feeWaived(encodedSwap);
-            let swapId = _getSwapId(encodedSwap, initiator);
+            let feeWaived = MesonHelpers::_feeWaived(encodedSwap);
+            let swapId = MesonHelpers::_getSwapId(encodedSwap, initiator);
             let (_poolIndex, until, recipient) = self.getLockedSwap(swapId);
-            let coreAmount = _coreTokenAmount(encodedSwap);
-            let recipientAsEth = _ethAddressFromStarknet(recipient);
-            let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
-            let mut releaseAmount = _amountToLock(encodedSwap);
+            let coreAmount = MesonHelpers::_coreTokenAmount(encodedSwap);
+            let recipientAsEth = MesonHelpers::_ethAddressFromStarknet(recipient);
+            let serviceFeePoolTokenIndex = MesonHelpers::_poolTokenIndexForOutToken(encodedSwap, 0);
+            let mut releaseAmount = MesonHelpers::_amountToLock(encodedSwap);
 
-            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
+            MesonHelpers::_checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
             assert(until > 1, 'Swap does not exist!');
             assert(
-                _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
+                MesonHelpers::_expireTsFrom(encodedSwap) > get_block_timestamp().into(),
                 'Cannot release. Expired!'
             );
             assert(recipient.is_non_zero(), 'Recipient cannot be zero!');
 
-            if feeWaived { 
+            if feeWaived {
                 self.onlyPremiumManager();
             } else {
-                let serviceFee = _serviceFee(encodedSwap);
+                let serviceFee = MesonHelpers::_serviceFee(encodedSwap);
                 releaseAmount -= serviceFee;
                 self.storage.balanceOfPoolToken.write(
                     serviceFeePoolTokenIndex,
@@ -614,39 +585,39 @@ mod Meson {
                 // TODO
             }
             self.storage._safeTransfer(
-                _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
+                MesonHelpers::_outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
-                swapId, (0, 1, 0_felt252.try_into().unwrap())      
+                swapId, (0, 1, 0_felt252.try_into().unwrap())
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
 
-            self.emit(SwapReleased { encodedSwap });
+            self.emit(events::SwapReleased { encodedSwap });
         }
 
         fn directRelease(
-            ref self: ContractState, 
-            encodedSwap: u256, 
-            r: u256, 
-            yParityAndS: u256, 
-            initiator: EthAddress, 
+            ref self: ContractState,
+            encodedSwap: u256,
+            r: u256,
+            yParityAndS: u256,
+            initiator: EthAddress,
             recipient: ContractAddress
         ) {
-            let feeWaived = _feeWaived(encodedSwap);
-            let swapId = _getSwapId(encodedSwap, initiator);
+            let feeWaived = MesonHelpers::_feeWaived(encodedSwap);
+            let swapId = MesonHelpers::_getSwapId(encodedSwap, initiator);
             let (_, until, recipient) = self.getLockedSwap(swapId);
             let poolIndex = self.storage.poolOfAuthorizedAddr.read(get_caller_address());
-            let coreAmount = _coreTokenAmount(encodedSwap);
-            let recipientAsEth = _ethAddressFromStarknet(recipient);
-            let poolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, poolIndex);
-            let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
-            let mut releaseAmount = _amountToLock(encodedSwap);
+            let coreAmount = MesonHelpers::_coreTokenAmount(encodedSwap);
+            let recipientAsEth = MesonHelpers::_ethAddressFromStarknet(recipient);
+            let poolTokenIndex = MesonHelpers::_poolTokenIndexForOutToken(encodedSwap, poolIndex);
+            let serviceFeePoolTokenIndex = MesonHelpers::_poolTokenIndexForOutToken(encodedSwap, 0);
+            let mut releaseAmount = MesonHelpers::_amountToLock(encodedSwap);
 
             self.forTargetChain(encodedSwap);
-            _checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
+            MesonHelpers::_checkReleaseSignature(encodedSwap, recipientAsEth, r, yParityAndS, initiator);
             assert(until == 0, 'Swap already exists');
             assert(poolIndex != 0, 'Caller not registered!');
             assert(
-                _expireTsFrom(encodedSwap) > get_block_timestamp().into(), 
+                MesonHelpers::_expireTsFrom(encodedSwap) > get_block_timestamp().into(),
                 'Cannot release. Expired!'
             );
             assert(recipient.is_non_zero(), 'Recipient cannot be zero!');
@@ -655,10 +626,10 @@ mod Meson {
                 poolTokenIndex,
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) - releaseAmount
             );
-            if feeWaived { 
+            if feeWaived {
                 self.onlyPremiumManager();
             } else {
-                let serviceFee = _serviceFee(encodedSwap);
+                let serviceFee = MesonHelpers::_serviceFee(encodedSwap);
                 releaseAmount -= serviceFee;
                 self.storage.balanceOfPoolToken.write(
                     serviceFeePoolTokenIndex,
@@ -669,13 +640,13 @@ mod Meson {
                 // TODO
             }
             self.storage._safeTransfer(
-                _outTokenIndexFrom(encodedSwap), recipient, releaseAmount
+                MesonHelpers::_outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
-                swapId, (0, 1, 0_felt252.try_into().unwrap())      
+                swapId, (0, 1, 0_felt252.try_into().unwrap())
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
 
-            self.emit(SwapReleased { encodedSwap });
+            self.emit(events::SwapReleased { encodedSwap });
         }
     }
 

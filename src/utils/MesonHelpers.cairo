@@ -172,19 +172,19 @@ pub(crate) fn _tokenType(tokenIndex: u8) -> u8 {
     if tokenIndex >= 192 {
         tokenIndex / 4  // Non stablecoins
     } else {
-        0               // Stablecoins
+        0   // Stablecoins
     }
 }
 
-pub(crate) fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u64 {   // original (uint256, uint40) -> uint48
+pub(crate) fn _poolTokenIndexForOutToken(encodedSwap: u256, poolIndex: u64) -> u64 {
     ((encodedSwap & 0xFF000000) * POW_2_16).try_into().unwrap() | poolIndex
 }
 
-pub(crate) fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {   // original (uint200) -> address
-    (postedSwap / POW_2_40).into()
+pub(crate) fn _initiatorFromPosted(postedSwap: u256) -> EthAddress {
+    ((postedSwap / POW_2_40) & U160_MAX).into()
 }
 
-pub(crate) fn _poolIndexFromPosted(postedSwap: u256) -> u64 {  // original (uint200) -> uint40
+pub(crate) fn _poolIndexFromPosted(postedSwap: u256) -> u64 {
     (postedSwap & U40_MAX).try_into().unwrap()
 }
 

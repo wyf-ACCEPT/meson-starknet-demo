@@ -8,11 +8,10 @@ pub trait MesonViewStorageTrait<TState> {
     fn balanceOfPoolToken(self: @TState, poolTokenIndex: u64) -> u256;
     fn ownerOfPool(self: @TState, poolIndex: u64) -> ContractAddress;
     fn poolOfAuthorizedAddr(self: @TState, addr: ContractAddress) -> u64;
-    fn getIndexOfToken(self: @TState, token: ContractAddress) -> u8;
-    fn getTokenForIndex(self: @TState, index: u8) -> ContractAddress;
+    fn indexOfToken(self: @TState, token: ContractAddress) -> u8;
+    fn tokenForIndex(self: @TState, index: u8) -> ContractAddress;
     fn getPostedSwap(self: @TState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress);
     fn getLockedSwap(self: @TState, swapId: u256) -> (u64, u64, ContractAddress);
-    fn getShortCoinType(self: @TState) -> u16;
     fn poolTokenBalance(self: @TState, token: ContractAddress, addr: ContractAddress) -> u256;
     fn serviceFeeCollected(self: @TState, tokenIndex: u8) -> u256;
 }
@@ -20,6 +19,7 @@ pub trait MesonViewStorageTrait<TState> {
 #[starknet::interface]
 pub trait MesonManagerTrait<TState> {
     // View functions
+    fn getShortCoinType(self: @TState) -> u16;
     fn getSupportedTokens(self: @TState) -> (Array<ContractAddress>, Array<u8>);
 
     // Modifier
@@ -37,28 +37,19 @@ pub trait MesonManagerTrait<TState> {
 #[starknet::interface]
 pub trait MesonSwapTrait<TState> {
     // Modifier
-    fn verifyEncodedSwap(self: @TState, encodedSwap: u256);     // Need assert inside
+    fn verifyEncodedSwap(self: @TState, encodedSwap: u256); // Need assert inside
 
     // Write functions
-    fn postSwap(
-        ref self: TState, 
-        encodedSwap: u256, 
-        initiator: EthAddress, 
-        poolIndex: u64
-    );
-    fn postSwapFromInitiator(
-        ref self: TState, 
-        encodedSwap: u256, 
-        postingValue: u256
-    );
+    fn postSwap(ref self: TState, encodedSwap: u256, postingValue: u256);
+    fn postSwapFromInitiator(ref self: TState, encodedSwap: u256, postingValue: u256);
     fn bondSwap(ref self: TState, encodedSwap: u256, poolIndex: u64);
     fn cancelSwap(ref self: TState, encodedSwap: u256);
     fn executeSwap(
-        ref self: TState, 
-        encodedSwap: u256, 
-        r: u256, 
-        yParityAndS: u256, 
-        recipient: EthAddress, 
+        ref self: TState,
+        encodedSwap: u256,
+        r: u256,
+        yParityAndS: u256,
+        recipient: EthAddress,
         depositToPool: bool
     );
 }
@@ -66,7 +57,7 @@ pub trait MesonSwapTrait<TState> {
 #[starknet::interface]
 pub trait MesonPoolsTrait<TState> {
     // Modifier
-    fn forTargetChain(self: @TState, encodedSwap: u256);     // Need assert inside
+    fn forTargetChain(self: @TState, encodedSwap: u256); // Need assert inside
 
     // Write functions (LPs)
     fn depositAndRegister(ref self: TState, amount: u256, poolTokenIndex: u64);
@@ -78,25 +69,18 @@ pub trait MesonPoolsTrait<TState> {
 
     // Write functions (users)
     fn lockSwap(
-        ref self: TState, 
-        encodedSwap: u256, 
-        initiator: EthAddress, 
-        recipient: ContractAddress
+        ref self: TState, encodedSwap: u256, initiator: EthAddress, recipient: ContractAddress
     );
     fn unlock(ref self: TState, encodedSwap: u256, initiator: EthAddress);
     fn release(
-        ref self: TState, 
-        encodedSwap: u256, 
-        r: u256, 
-        yParityAndS: u256, 
-        initiator: EthAddress
+        ref self: TState, encodedSwap: u256, r: u256, yParityAndS: u256, initiator: EthAddress
     );
     fn directRelease(
-        ref self: TState, 
-        encodedSwap: u256, 
-        r: u256, 
-        yParityAndS: u256, 
-        initiator: EthAddress, 
+        ref self: TState,
+        encodedSwap: u256,
+        r: u256,
+        yParityAndS: u256,
+        initiator: EthAddress,
         recipient: ContractAddress
     );
 }
