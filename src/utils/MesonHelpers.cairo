@@ -3,7 +3,6 @@ use core::{
     option::OptionTrait,
     traits::TryInto,
     keccak::compute_keccak_byte_array,
-    debug,
 };
 use starknet::{
     ContractAddress, EthAddress,
@@ -43,6 +42,18 @@ enum MesonErrors {
     TokenIndexNotAllowed,
     SignerCannotBeZero,
     InvalidSignature,
+}
+
+fn reverseU256(mut origin: u256) -> u256 {
+    let mut reverse: u256 = 0;
+    let mut i: u8 = 0;
+    while i < 32 {
+        let byte = origin & 0xff;
+        reverse = reverse * 0x100 + byte;
+        origin = origin / 0x100;
+        i += 1;
+    }
+    reverse
 }
 
 pub(crate) fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
@@ -204,7 +215,7 @@ pub(crate) fn _poolIndexFrom(poolTokenIndex: u64) -> u64 {     // original (uint
 pub(crate) fn _ethAddressFromStarknet(starknetAddress: ContractAddress) -> EthAddress {
     let starknetAddressFelt252: felt252 = starknetAddress.into();
     let starknetAddressU256: u256 = starknetAddressFelt252.into();
-    starknetAddressU256.into()
+    (starknetAddressU256 / POW_2_96).into()
 }
 
 pub(crate) fn _checkRequestSignature(
@@ -289,10 +300,8 @@ pub(crate) fn _checkReleaseSignature(
         bytes
     };
     
-    // debug::print_byte_array_as_string(@signingData.clone().into());
-
-    let digest = compute_keccak_byte_array(@signingData.into());
-    // _checkSignature(digest, r, yParityAndS, signer);     // TODO: add it back
+    let digest = reverseU256(compute_keccak_byte_array(@signingData.into()));
+    _checkSignature(digest, r, yParityAndS, signer);
 }
 
 pub(crate) fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress) {
@@ -309,35 +318,15 @@ pub(crate) fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: 
     verify_eth_signature(digest, signature, signer);
 }
 
-// // Only for testing
-// #[test]
-// #[available_gas(20000000)]
-// fn test_get_swap_id() {
-//     let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
-//     let initiator = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
-//     let swap_id = _getSwapId(encodedSwap, initiator);
-//     assert(swap_id == 0xe3a84cd4912a01989c6cd24e41d3d94baf143242fbf1da26eb7eac08c347b638, 'Failed');
-// }
-
-// #[test]
-// #[available_gas(50000000)]
-// fn test_check_request_signature() {
-//     let encodedSwap = 0x01001dcd6500c00000000000f677815c000000000000634dcb98027d0102ca21;
-//     let r = 0xb3184c257cf973069250eefd849a74d27250f8343cbda7615191149dd3c1b61d_u256;
-//     let yParityAndS = 0x5d4e2b5ecc76a59baabf10a8d5d116edb95a5b2055b9b19f71524096975b29c2_u256;
-//     let signer: EthAddress = 0x2ef8a51f8ff129dbb874a0efb021702f59c1b211_u256.into();
-//     _checkRequestSignature(encodedSwap, r, yParityAndS, signer);
-// }
-
-// #[test]
-// #[available_gas(50000000)]
-// fn test_check_signature() {
-//     let encoded_swap = 0x0100000f4240d80000000000c127fdf300000000000068320479232c0202ca22;
-//     let r = 0x23e57dfe5c345300a3d591a2017635f2315c6f1fb2a3dd2ae7bee6f2ad6408e7;
-//     let yParityAndS = 0x5882f43d9a944cc9cf227f74b2f0d330d6da8695d2119ef9f00ce0cbb3ccc49a;
-//     let initiator: EthAddress = 0xdc7ac7c33107f1876aec2d1d80764d06beec3984_u256.into();
-//     let recipient: ContractAddress = 0x01495a6d83bb1d35ac6e84922e9294ba2379b8b35140b66d6e09f58c15f64d6a
-//         .try_into().unwrap();
-//     let recipientAsEth: EthAddress = _ethAddressFromStarknet(recipient);
-//     _checkReleaseSignature(encoded_swap, recipientAsEth, r, yParityAndS, initiator);
-// }
+#[test]
+#[available_gas(50000000)]
+fn test_check_signature() {
+    let encoded_swap = 0x0100000f4240d80000000000c127fdf300000000000068320479232c0202ca22;
+    let r = 0x23e57dfe5c345300a3d591a2017635f2315c6f1fb2a3dd2ae7bee6f2ad6408e7;
+    let yParityAndS = 0x5882f43d9a944cc9cf227f74b2f0d330d6da8695d2119ef9f00ce0cbb3ccc49a;
+    let initiator: EthAddress = 0xdc7ac7c33107f1876aec2d1d80764d06beec3984_u256.into();
+    let recipient: ContractAddress = 0x01495a6d83bb1d35ac6e84922e9294ba2379b8b35140b66d6e09f58c15f64d6a
+        .try_into().unwrap();
+    let recipientAsEth: EthAddress = _ethAddressFromStarknet(recipient);
+    _checkReleaseSignature(encoded_swap, recipientAsEth, r, yParityAndS, initiator);
+}

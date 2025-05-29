@@ -1,4 +1,4 @@
-use starknet::{ContractAddress, EthAddress};
+use starknet::ContractAddress;
 
 #[derive(Drop, Debug, PartialEq, starknet::Event)]
 pub struct PremiumManagerTransferred {

@@ -586,7 +586,7 @@ mod Meson {
         ) {
             let feeWaived = _feeWaived(encodedSwap);
             let swapId = _getSwapId(encodedSwap, initiator);
-            let (poolIndex, until, recipient) = self.getLockedSwap(swapId);
+            let (_poolIndex, until, recipient) = self.getLockedSwap(swapId);
             let coreAmount = _coreTokenAmount(encodedSwap);
             let recipientAsEth = _ethAddressFromStarknet(recipient);
             let serviceFeePoolTokenIndex = _poolTokenIndexForOutToken(encodedSwap, 0);
