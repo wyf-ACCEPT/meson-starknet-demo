@@ -17,11 +17,11 @@ pub mod MesonStatesComponent {
     pub struct Storage {
         pub owner: ContractAddress,
         pub premiumManager: ContractAddress,
-        pub balanceOfPoolToken: Map<u64, u256>,
-        pub ownerOfPool: Map<u64, ContractAddress>,
-        pub poolOfAuthorizedAddr: Map<ContractAddress, u64>,
-        pub indexOfToken: Map<ContractAddress, u8>,
         pub tokenForIndex: Map<u8, ContractAddress>,
+        pub indexOfToken: Map<ContractAddress, u8>,
+        pub poolOfAuthorizedAddr: Map<ContractAddress, u64>,
+        pub ownerOfPool: Map<u64, ContractAddress>,
+        pub balanceOfPoolToken: Map<u64, u256>,
         pub postedSwaps: Map<
             u256, (u64, EthAddress, ContractAddress)
         >,  // Customized struct cannot be used as the value of Map

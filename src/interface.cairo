@@ -5,15 +5,14 @@ pub trait MesonViewStorageTrait<TState> {
     // View functions
     fn getOwner(self: @TState) -> ContractAddress;
     fn getPremiumManager(self: @TState) -> ContractAddress;
-    fn balanceOfPoolToken(self: @TState, poolTokenIndex: u64) -> u256;
-    fn ownerOfPool(self: @TState, poolIndex: u64) -> ContractAddress;
-    fn poolOfAuthorizedAddr(self: @TState, addr: ContractAddress) -> u64;
-    fn indexOfToken(self: @TState, token: ContractAddress) -> u8;
     fn tokenForIndex(self: @TState, index: u8) -> ContractAddress;
-    fn getPostedSwap(self: @TState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress);
-    fn getLockedSwap(self: @TState, swapId: u256) -> (u64, u64, ContractAddress);
+    fn indexOfToken(self: @TState, token: ContractAddress) -> u8;
+    fn poolOfAuthorizedAddr(self: @TState, addr: ContractAddress) -> u64;
+    fn ownerOfPool(self: @TState, poolIndex: u64) -> ContractAddress;
     fn poolTokenBalance(self: @TState, token: ContractAddress, addr: ContractAddress) -> u256;
     fn serviceFeeCollected(self: @TState, tokenIndex: u8) -> u256;
+    fn getPostedSwap(self: @TState, encodedSwap: u256) -> (u64, EthAddress, ContractAddress);
+    fn getLockedSwap(self: @TState, swapId: u256) -> (u64, u64, ContractAddress);
 }
 
 #[starknet::interface]
@@ -27,10 +26,10 @@ pub trait MesonManagerTrait<TState> {
     fn onlyPremiumManager(self: @TState);
 
     // Write functions
-    fn addSupportToken(ref self: TState, token: ContractAddress, index: u8);
-    fn removeSupportToken(ref self: TState, index: u8);
     fn transferOwnership(ref self: TState, newOwner: ContractAddress);
     fn transferPremiumManager(ref self: TState, newPremiumManager: ContractAddress);
+    fn addSupportToken(ref self: TState, token: ContractAddress, index: u8);
+    fn removeSupportToken(ref self: TState, index: u8);
     fn withdrawServiceFee(ref self: TState, tokenIndex: u8, amount: u256, toPoolIndex: u64);
 }
 
