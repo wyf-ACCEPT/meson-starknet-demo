@@ -221,15 +221,15 @@ pub(crate) fn _checkRequestSignature(
     let nonTyped = _signNonTyped(encodedSwap);
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
-            is32: !nonTyped, is33: true,
-        ).into();
+        let mut bytes: Bytes = if nonTyped {
+            MesonConstants::TRON_SIGN_HEADER_33()
+        } else {
+            MesonConstants::TRON_SIGN_HEADER()
+        }.into();
         bytes.append_u256(encodedSwap);
         bytes
     } else if nonTyped {
-        let mut bytes: Bytes = MesonConstants::_getEthSignHeaderBytes(
-            is32: true
-        ).into();
+        let mut bytes: Bytes = MesonConstants::ETH_SIGN_HEADER().into();
         bytes.append_u256(encodedSwap);
         bytes
     } else {
@@ -261,17 +261,17 @@ pub(crate) fn _checkReleaseSignature(
     let recipient_u256: u256 = recipient_felt252.into();
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
-        let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
-            is32: !nonTyped, is33: false,
-        ).into();
+        let mut bytes: Bytes = if nonTyped {
+            MesonConstants::TRON_SIGN_HEADER_53()
+        } else {
+            MesonConstants::TRON_SIGN_HEADER()
+        }.into();
         bytes.append_u256(encodedSwap);
         bytes.append_u128_packed(recipient_u256.high, 4);
         bytes.append_u128(recipient_u256.low);
         bytes
     } else if nonTyped {
-        let mut bytes: Bytes = MesonConstants::_getEthSignHeaderBytes(
-            is32: false
-        ).into();
+        let mut bytes: Bytes = MesonConstants::ETH_SIGN_HEADER_52().into();
         bytes.append_u256(encodedSwap);
         bytes.append_u128_packed(recipient_u256.high, 4);
         bytes.append_u128(recipient_u256.low);
@@ -301,7 +301,7 @@ pub(crate) fn _checkReleaseSignature(
 fn _reverseU256(mut origin: u256) -> u256 {
     let mut reverse: u256 = 0;
     let mut i: u8 = 0;
-    while i < 32 {
+    while i != 32 {
         let byte = origin & 0xff;
         reverse = reverse * 0x100 + byte;
         origin = origin / 0x100;

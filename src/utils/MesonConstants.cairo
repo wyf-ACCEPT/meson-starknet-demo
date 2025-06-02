@@ -29,21 +29,22 @@ pub const RELEASE_TO_TRON_TYPE_HASH: u256 = 0x28cf5b919ed55db2b14d9e8b261a523eaf
 // // (testnet) keccak256 value for "bytes32 Sign to release a swap on Meson (Testnet)address Recipient (tron address in hex format)"
 // pub const RELEASE_TO_TRON_TYPE_HASH: u256 = 0xd4786e314a149e139351cd038cade52355604bd9190780c901fd5733336bffbd;
 
-
-pub fn _getEthSignHeaderBytes(is32: bool) -> ByteArray {
-    if is32 {
-        "\x19Ethereum Signed Message:\n32"
-    } else {
-        "\x19Ethereum Signed Message:\n52"
-    }
+pub fn ETH_SIGN_HEADER() -> ByteArray {
+    "\x19Ethereum Signed Message:\n32"
 }
 
-pub fn _getTronSignHeaderBytes(is32: bool, is33: bool) -> ByteArray {
-    if is32 {
-        "\x19TRON Signed Message:\n32\n"
-    } else if is33 {
-        "\x19TRON Signed Message:\n33\n"
-    } else {
-        "\x19TRON Signed Message:\n53\n"
-    }
+pub fn ETH_SIGN_HEADER_52() -> ByteArray {
+    "\x19Ethereum Signed Message:\n52"
+}
+
+pub fn TRON_SIGN_HEADER() -> ByteArray {
+    "\x19TRON Signed Message:\n32\n"
+}
+
+pub fn TRON_SIGN_HEADER_33() -> ByteArray {
+    "\x19TRON Signed Message:\n33\n"
+}
+
+pub fn TRON_SIGN_HEADER_53() -> ByteArray {
+    "\x19TRON Signed Message:\n53\n"
 }
