@@ -13,27 +13,27 @@ use alexandria_bytes::{Bytes, BytesTrait};
 use meson_starknet::utils::MesonConstants;
 
 // Note that there's no `<<` or `>>` operator in cairo.
-const POW_2_255: u256 = 0x8000000000000000000000000000000000000000000000000000000000000000;
-const POW_2_248: u256 = 0x100000000000000000000000000000000000000000000000000000000000000;
-const POW_2_208: u256 = 0x10000000000000000000000000000000000000000000000000000;
-const POW_2_172: u256 = 0x10000000000000000000000000000000000000000000;
-const POW_2_160: u256 = 0x10000000000000000000000000000000000000000;
-const POW_2_128: u256 = 0x100000000000000000000000000000000;
-const POW_2_96 : u256 = 0x1000000000000000000000000;
-const POW_2_88 : u256 = 0x10000000000000000000000;
-const POW_2_48 : u256 = 0x1000000000000;
-const POW_2_40 : u256 = 0x10000000000;
-const POW_2_32 : u256 = 0x100000000;
-const POW_2_24 : u256 = 0x1000000;
-const POW_2_16 : u256 = 0x10000;
+const POW_2_255: u256 = 0x8000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000__0000__0000_0000;
+const POW_2_248: u256 = 0x100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const POW_2_208: u256 = 0x1_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const POW_2_172: u256 = 0x1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const POW_2_160: u256 = 0x1_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+const POW_2_128: u256 = 0x1_0000_0000_0000_0000_0000_0000_0000_0000;
+const POW_2_96 : u256 = 0x1_0000_0000_0000_0000_0000_0000;
+const POW_2_88 : u256 = 0x100_0000_0000_0000_0000_0000;
+const POW_2_48 : u256 = 0x1_0000_0000_0000;
+const POW_2_40 : u256 = 0x100_0000_0000;
+const POW_2_32 : u256 = 0x1_0000_0000;
+const POW_2_24 : u256 = 0x100_0000;
+const POW_2_16 : u256 = 0x1_0000;
 const POW_2_8  : u256 = 0x100;
 
-const U160_MAX : u256 = 0xffffffffffffffffffffffffffffffffffffffff;
-const U80_MAX  : u256 = 0xffffffffffffffffffff;
-const U64_MAX  : u256 = 0xffffffffffffffff;
-const U40_MAX  : u256 = 0xffffffffff;
-const U32_MAX  : u256 = 0xffffffff;
-const U20_MAX  : u256 = 0xfffff;
+const U160_MAX : u256 = 0xffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
+const U80_MAX  : u256 = 0xffff_ffff_ffff_ffff_ffff;
+const U64_MAX  : u256 = 0xffff_ffff_ffff_ffff;
+const U40_MAX  : u256 = 0xff_ffff_ffff;
+const U32_MAX  : u256 = 0xffff_ffff;
+const U20_MAX  : u256 = 0xf_ffff;
 const U16_MAX  : u256 = 0xffff;
 const U12_MAX  : u256 = 0xfff;
 const U8_MAX   : u256 = 0xff;
@@ -42,18 +42,6 @@ enum MesonErrors {
     TokenIndexNotAllowed,
     SignerCannotBeZero,
     InvalidSignature,
-}
-
-fn reverseU256(mut origin: u256) -> u256 {
-    let mut reverse: u256 = 0;
-    let mut i: u8 = 0;
-    while i < 32 {
-        let byte = origin & 0xff;
-        reverse = reverse * 0x100 + byte;
-        origin = origin / 0x100;
-        i += 1;
-    }
-    reverse
 }
 
 pub(crate) fn _getSwapId(encodedSwap: u256, initiator: EthAddress) -> u256 {
@@ -72,6 +60,10 @@ pub(crate) fn _versionFrom(encodedSwap: u256) -> u8 {
 
 pub(crate) fn _amountFrom(encodedSwap: u256) -> u256 {
     (encodedSwap / POW_2_208) & U40_MAX
+}
+
+pub(crate) fn _amountToLock(encodedSwap: u256) -> u256 {
+    _amountFrom(encodedSwap) - _feeForLp(encodedSwap) - _amountForCoreTokenFrom(encodedSwap)
 }
 
 pub(crate) fn _serviceFee(encodedSwap: u256) -> u256 {
@@ -139,14 +131,6 @@ pub(crate) fn _coreTokenAmount(encodedSwap: u256) -> u256 {
     }
 }
 
-pub(crate) fn _needAdjustAmount(tokenIndex: u8) -> bool {
-    tokenIndex > 32
-}
-
-pub(crate) fn _amountToLock(encodedSwap: u256) -> u256 {
-    _amountFrom(encodedSwap) - _feeForLp(encodedSwap) - _amountForCoreTokenFrom(encodedSwap)
-}
-
 pub(crate) fn _expireTsFrom(encodedSwap: u256) -> u256 {
     (encodedSwap / POW_2_48) & U40_MAX
 }
@@ -168,11 +152,21 @@ pub(crate) fn _outTokenIndexFrom(encodedSwap: u256) -> u8 {
 }
 
 pub(crate) fn _tokenType(tokenIndex: u8) -> u8 {
-    assert(tokenIndex >= 192 || tokenIndex < 65, 'Token index not allowed!');
     if tokenIndex >= 192 {
-        tokenIndex / 4  // Non stablecoins
+        // Non stablecoins [192, 255] -> [48, 63]
+        tokenIndex / 4
+    } else if tokenIndex <= 64 {
+        // Stablecoins [1, 64] -> 0
+        0
+    } else if tokenIndex <= 112 {
+        // 3rd party tokens [65, 112] -> [1, 24]
+        (tokenIndex + 1) / 2 - 32
+    } else if tokenIndex <= 128 {
+        // 3rd party tokens [113, 128] -> [33, 48]
+        tokenIndex - 80
     } else {
-        0   // Stablecoins
+        assert(false, 'Token index not allowed!');
+        0
     }
 }
 
@@ -228,7 +222,7 @@ pub(crate) fn _checkRequestSignature(
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
         let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
-            is32: if nonTyped { false } else { true }, is33: true,
+            is32: !nonTyped, is33: true,
         ).into();
         bytes.append_u256(encodedSwap);
         bytes
@@ -268,7 +262,7 @@ pub(crate) fn _checkReleaseSignature(
 
     let signingData = if _inChainFrom(encodedSwap) == 0x00c3 {
         let mut bytes: Bytes = MesonConstants::_getTronSignHeaderBytes(
-            is32: if nonTyped { false } else { true }, is33: false,
+            is32: !nonTyped, is33: false,
         ).into();
         bytes.append_u256(encodedSwap);
         bytes.append_u128_packed(recipient_u256.high, 4);
@@ -300,8 +294,20 @@ pub(crate) fn _checkReleaseSignature(
         bytes
     };
     
-    let digest = reverseU256(compute_keccak_byte_array(@signingData.into()));
+    let digest = _reverseU256(compute_keccak_byte_array(@signingData.into()));
     _checkSignature(digest, r, yParityAndS, signer);
+}
+
+fn _reverseU256(mut origin: u256) -> u256 {
+    let mut reverse: u256 = 0;
+    let mut i: u8 = 0;
+    while i < 32 {
+        let byte = origin & 0xff;
+        reverse = reverse * 0x100 + byte;
+        origin = origin / 0x100;
+        i += 1;
+    }
+    reverse
 }
 
 pub(crate) fn _checkSignature(digest: u256, r: u256, yParityAndS: u256, signer: EthAddress) {

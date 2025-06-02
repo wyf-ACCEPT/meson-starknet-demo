@@ -52,6 +52,15 @@ pub trait MesonSwapTrait<TState> {
         recipient: EthAddress,
         depositToPool: bool
     );
+    // fn directExecuteSwap(
+    //     ref self: TState,
+    //     encodedSwap: u256,
+    //     r: u256,
+    //     yParityAndS: u256,
+    //     initiator: EthAddress,
+    //     recipient: EthAddress
+    // );
+    // fn simpleExecuteSwap(ref self: TState, encodedSwap: u256);
 }
 
 #[starknet::interface]

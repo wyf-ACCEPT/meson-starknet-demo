@@ -68,6 +68,14 @@ mod Meson {
     }
 
     #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.onlyOwner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
+    }
+
+    #[abi(embed_v0)]
     impl MesonViewStorage of MesonViewStorageTrait<ContractState> {
 
         // View functions
@@ -311,7 +319,7 @@ mod Meson {
             self.storage.postedSwaps.write(
                 encodedSwap, (0, 0.try_into().unwrap(), 0_felt252.try_into().unwrap())
             );
-            self.storage._safeTransfer(tokenIndex, fromAddress, MesonHelpers::_amountFrom(encodedSwap));
+            self.storage._withdrawToken(tokenIndex, fromAddress, MesonHelpers::_amountFrom(encodedSwap));
 
             self.emit(events::SwapCancelled { encodedSwap });
         }
@@ -343,11 +351,24 @@ mod Meson {
                 );
             } else {
                 let poolOwner = self.storage.ownerOfPool.read(poolIndex);
-                self.storage._safeTransfer(tokenIndex, poolOwner, amount);
+                self.storage._withdrawToken(tokenIndex, poolOwner, amount);
             }
 
             self.emit(events::SwapExecuted { encodedSwap });
         }
+
+        // fn directExecuteSwap(
+        //     ref self: ContractState,
+        //     encodedSwap: u256,
+        //     r: u256,
+        //     yParityAndS: u256,
+        //     initiator: EthAddress,
+        //     recipient: EthAddress
+        // ) {
+        //     self.verifyEncodedSwap(encodedSwap);
+        //     MesonHelpers::_checkReleaseSignature(encodedSwap, recipient, r, yParityAndS, initiator);
+
+        // }
 
     }
 
@@ -429,7 +450,7 @@ mod Meson {
                 poolTokenIndex,
                 self.storage.balanceOfPoolToken.read(poolTokenIndex) - amount
             );
-            self.storage._safeTransfer(tokenIndex, poolOwner, amount);
+            self.storage._withdrawToken(tokenIndex, poolOwner, amount);
 
             self.emit(events::PoolWithdrawn { poolTokenIndex, amount });
         }
@@ -584,7 +605,7 @@ mod Meson {
             if coreAmount > 0 {
                 // TODO
             }
-            self.storage._safeTransfer(
+            self.storage._withdrawToken(
                 MesonHelpers::_outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
@@ -639,7 +660,7 @@ mod Meson {
             if coreAmount > 0 {
                 // TODO
             }
-            self.storage._safeTransfer(
+            self.storage._withdrawToken(
                 MesonHelpers::_outTokenIndexFrom(encodedSwap), recipient, releaseAmount
             );
             self.storage.lockedSwaps.write(
@@ -647,14 +668,6 @@ mod Meson {
             );      // It correspond to `_lockedSwaps[swapId] = 1` in solidity.
 
             self.emit(events::SwapReleased { encodedSwap });
-        }
-    }
-
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.onlyOwner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 

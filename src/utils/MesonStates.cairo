@@ -11,9 +11,7 @@ pub mod MesonStatesComponent {
     use openzeppelin::token::erc20::interface::{
         IERC20Dispatcher, IERC20DispatcherTrait
     };
-    use meson_starknet::utils::MesonHelpers::{
-        _isCoreToken, _needAdjustAmount
-    };
+    use meson_starknet::utils::MesonHelpers::_isCoreToken;
 
     #[storage]
     pub struct Storage {
@@ -36,89 +34,6 @@ pub mod MesonStatesComponent {
     pub impl InternalImpl<
         TContractState, +HasComponent<TContractState>
     > of InternalTrait<TContractState> {
-        fn _depositToken(
-            ref self: ComponentState<TContractState>,
-            tokenIndex: u8,
-            sender: ContractAddress,
-            amount: u256
-        ) {
-            assert(amount > 0, 'Amount must > 0');
-            if _isCoreToken(tokenIndex) {
-                // Core tokens (e.g. ETH or BNB)
-                // TODO: how to check this?
-                // assert(amount * 1e12 == msg.value, "msg.value does not match the amount");
-            } else {
-                // Stablecoins
-                let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
-                assert(token.is_non_zero(), 'Token not supported');
-
-                let mut adjustedAmount = amount;
-                if _needAdjustAmount(tokenIndex) {
-                    adjustedAmount = amount * 1_000000_000000;
-                }
-
-                IERC20Dispatcher { contract_address: token }.transfer_from(
-                    sender, get_contract_address(), adjustedAmount
-                );
-            }
-        }
-
-        fn _safeTransfer(
-            ref self: ComponentState<TContractState>,
-            tokenIndex: u8,
-            recipient: ContractAddress,
-            amount: u256
-        ) {
-            if _isCoreToken(tokenIndex) {
-                // Core tokens (e.g. ETH or BNB)
-                // TODO
-            } else {
-                // Stablecoins
-                let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
-
-                let mut adjustedAmount = amount;
-                if _needAdjustAmount(tokenIndex) {
-                    adjustedAmount = amount * 1_000000_000000;
-                }
-
-                IERC20Dispatcher { contract_address: token }.transfer(
-                    recipient, adjustedAmount
-                );
-            }
-        }
-
-        fn _addSupportToken(
-            ref self: ComponentState<TContractState>,
-            token: ContractAddress,
-            index: u8
-        ) {
-            assert(index != 0, 'Cannot use 0 as token index');
-            assert(token.is_non_zero(), 'Cannot use zero address');
-            assert(self.indexOfToken.read(token) == 0, 'Token has been added before');
-            assert(self.tokenForIndex.read(index).is_zero(), 'Index has been used');
-            if _isCoreToken(index) {
-                // TODO: how to check this
-                //     assert(
-                //          token == ContractAddressZeroable::zero(), 
-                //          "Core token requires adddress(0x1)"
-                //     );
-            }
-            self.indexOfToken.write(token, index);
-            self.tokenForIndex.write(index, token);
-        }
-
-        fn _removeSupportToken(
-            ref self: ComponentState<TContractState>,
-            index: u8
-        ) {
-            assert(index != 0, 'Cannot use 0 as token index');
-            let token: ContractAddress = self.tokenForIndex.read(index);
-            assert(token.is_non_zero(), 'Token for this index not exist');
-            self.indexOfToken.write(token, 0);
-            self.tokenForIndex.write(index, 0_felt252.try_into().unwrap());
-        }
-
-        // _transferToContract: Don't need to write this function
 
         fn _transferOwnership(
             ref self: ComponentState<TContractState>,
@@ -134,6 +49,82 @@ pub mod MesonStatesComponent {
         ) {
             assert(newPremiumManager.is_non_zero(), 'New manager cannot be zero!');
             self.premiumManager.write(newPremiumManager);
+        }
+
+        fn _addSupportToken(
+            ref self: ComponentState<TContractState>,
+            token: ContractAddress,
+            index: u8
+        ) {
+            assert(index != 0, 'Cannot use 0 as token index');
+            assert(token.is_non_zero(), 'Cannot use zero address');
+            assert(self.indexOfToken.read(token) == 0, 'Token has been added before');
+            assert(self.tokenForIndex.read(index).is_zero(), 'Index has been used');
+            assert(!_isCoreToken(index), 'Core token not supported');
+            self.indexOfToken.write(token, index);
+            self.tokenForIndex.write(index, token);
+        }
+
+        fn _removeSupportToken(
+            ref self: ComponentState<TContractState>,
+            index: u8
+        ) {
+            assert(index != 0, 'Cannot use 0 as token index');
+            let token: ContractAddress = self.tokenForIndex.read(index);
+            assert(token.is_non_zero(), 'Token for this index not exist');
+            self.indexOfToken.write(token, 0);
+            self.tokenForIndex.write(index, 0_felt252.try_into().unwrap());
+        }
+
+        fn _depositToken(
+            ref self: ComponentState<TContractState>,
+            tokenIndex: u8,
+            sender: ContractAddress,
+            amount: u256
+        ) {
+            assert(amount > 0, 'Amount cannot be 0');
+            assert(!_isCoreToken(tokenIndex), 'Core token not supported');
+
+            let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
+            assert(token.is_non_zero(), 'Token not supported');
+
+            IERC20Dispatcher { contract_address: token }.transfer_from(
+                sender, get_contract_address(), amount * self._amountFactor(tokenIndex)
+            );
+        }
+
+        fn _withdrawToken(
+            ref self: ComponentState<TContractState>,
+            tokenIndex: u8,
+            recipient: ContractAddress,
+            amount: u256
+        ) {
+            assert(amount > 0, 'Amount cannot be 0');
+            assert(!_isCoreToken(tokenIndex), 'Core token not supported');
+
+            let token: ContractAddress = self.tokenForIndex.read(tokenIndex);
+            assert(token.is_non_zero(), 'Token not supported');
+
+            IERC20Dispatcher { contract_address: token }.transfer(
+                recipient, amount * self._amountFactor(tokenIndex)
+            );
+        }
+
+        fn _amountFactor(
+            ref self: ComponentState<TContractState>,
+            tokenIndex: u8
+        ) -> u256 {
+            if tokenIndex <= 32 {
+                1
+            } else if tokenIndex == 242 {
+                100
+            } else if tokenIndex > 112 && tokenIndex <= 123 {
+                100
+            } else if tokenIndex > 123 && tokenIndex <= 128 {
+                1000
+            } else {
+                1_0000_0000_0000
+            }
         }
     }
 
