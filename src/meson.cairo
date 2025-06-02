@@ -42,16 +42,16 @@ mod Meson {
         UpgradeableEvent: UpgradeableComponent::Event,
 
         PremiumManagerTransferred: events::PremiumManagerTransferred,
+        PoolRegistered: events::PoolRegistered,
+        PoolAuthorizedAddrAdded: events::PoolAuthorizedAddrAdded,
+        PoolAuthorizedAddrRemoved: events::PoolAuthorizedAddrRemoved,
+        PoolOwnerTransferred: events::PoolOwnerTransferred,
+        PoolDeposited: events::PoolDeposited,
+        PoolWithdrawn: events::PoolWithdrawn,
         SwapPosted: events::SwapPosted,
         SwapBonded: events::SwapBonded,
         SwapCancelled: events::SwapCancelled,
         SwapExecuted: events::SwapExecuted,
-        PoolRegistered: events::PoolRegistered,
-        PoolDeposited: events::PoolDeposited,
-        PoolWithdrawn: events::PoolWithdrawn,
-        PoolAuthorizedAddrAdded: events::PoolAuthorizedAddrAdded,
-        PoolAuthorizedAddrRemoved: events::PoolAuthorizedAddrRemoved,
-        PoolOwnerTransferred: events::PoolOwnerTransferred,
         SwapLocked: events::SwapLocked,
         SwapUnlocked: events::SwapUnlocked,
         SwapReleased: events::SwapReleased,
@@ -87,34 +87,20 @@ mod Meson {
             self.storage.premiumManager.read()
         }
 
-        fn balanceOfPoolToken(self: @ContractState, poolTokenIndex: u64) -> u256 {
-            self.storage.balanceOfPoolToken.read(poolTokenIndex)
-        }
-
-        fn ownerOfPool(self: @ContractState, poolIndex: u64) -> ContractAddress {
-            self.storage.ownerOfPool.read(poolIndex)
-        }
-
-        fn poolOfAuthorizedAddr(self: @ContractState, addr: ContractAddress) -> u64 {
-            self.storage.poolOfAuthorizedAddr.read(addr)
+        fn tokenForIndex(self: @ContractState, index: u8) -> ContractAddress {
+            self.storage.tokenForIndex.read(index)
         }
 
         fn indexOfToken(self: @ContractState, token: ContractAddress) -> u8 {
             self.storage.indexOfToken.read(token)
         }
 
-        fn tokenForIndex(self: @ContractState, index: u8) -> ContractAddress {
-            self.storage.tokenForIndex.read(index)
+        fn poolOfAuthorizedAddr(self: @ContractState, addr: ContractAddress) -> u64 {
+            self.storage.poolOfAuthorizedAddr.read(addr)
         }
 
-        fn getPostedSwap(self: @ContractState, encodedSwap: u256)
-            -> (u64, EthAddress, ContractAddress) {
-            self.storage.postedSwaps.read(encodedSwap)
-        }
-
-        fn getLockedSwap(self: @ContractState, swapId: u256)
-            -> (u64, u64, ContractAddress) {
-            self.storage.lockedSwaps.read(swapId)
+        fn ownerOfPool(self: @ContractState, poolIndex: u64) -> ContractAddress {
+            self.storage.ownerOfPool.read(poolIndex)
         }
 
         fn poolTokenBalance(
@@ -138,6 +124,16 @@ mod Meson {
         ) -> u256 {
             let poolTokenIndex: u64 = MesonHelpers::_poolTokenIndexFrom(tokenIndex, 0);
             self.storage.balanceOfPoolToken.read(poolTokenIndex)
+        }
+
+        fn getPostedSwap(self: @ContractState, encodedSwap: u256)
+            -> (u64, EthAddress, ContractAddress) {
+            self.storage.postedSwaps.read(encodedSwap)
+        }
+
+        fn getLockedSwap(self: @ContractState, swapId: u256)
+            -> (u64, u64, ContractAddress) {
+            self.storage.lockedSwaps.read(swapId)
         }
 
     }
@@ -184,16 +180,6 @@ mod Meson {
         }
 
         // Write functions
-        fn addSupportToken(ref self: ContractState, token: ContractAddress, index: u8) {
-            self.onlyOwner();
-            self.storage._addSupportToken(token, index);
-        }
-
-        fn removeSupportToken(ref self: ContractState, index: u8) {
-            self.onlyOwner();
-            self.storage._removeSupportToken(index);
-        }
-
         fn transferOwnership(ref self: ContractState, newOwner: ContractAddress) {
             self.onlyOwner();
             self.storage._transferOwnership(newOwner);
@@ -206,6 +192,16 @@ mod Meson {
                 prevPremiumManager: get_caller_address(),
                 newPremiumManager,
             });
+        }
+
+        fn addSupportToken(ref self: ContractState, token: ContractAddress, index: u8) {
+            self.onlyOwner();
+            self.storage._addSupportToken(token, index);
+        }
+
+        fn removeSupportToken(ref self: ContractState, index: u8) {
+            self.onlyOwner();
+            self.storage._removeSupportToken(index);
         }
 
         fn withdrawServiceFee(
